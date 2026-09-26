@@ -13,6 +13,7 @@ const COLORS := {
 }
 
 func _draw() -> void:
+	draw_set_transform(Vector2.ZERO, 0, Vector2(WorldGen.PX, WorldGen.PX))
 	# Origin sits at the building's front (bottom) corner, so y-sorting works against actors.
 	var wall: Color = COLORS[kind][0]
 	var roof: Color = COLORS[kind][1]

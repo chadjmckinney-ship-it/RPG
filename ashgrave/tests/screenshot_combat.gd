@@ -4,6 +4,8 @@ func _initialize():
 	await process_frame
 	var tp = root.get_node("TacticalPause")
 	root.get_node("TimeOfDay").time = 0.72
+	root.get_node("GameState").reset()
+	root.get_node("GameState").recruited = ["maren", "oswin", "ketta"]
 	var main = load("res://main.tscn").instantiate()
 	main.spawn_encounters = false
 	root.add_child(main)
@@ -21,7 +23,7 @@ func _initialize():
 	main.party.select(main.party.members.duplicate())
 	main.party.order_attack(foes[0])
 	for k in 150: await process_frame
-	await create_timer(2.5).timeout
+	await create_timer(float(OS.get_environment("WAIT")) if OS.get_environment("WAIT") != "" else 2.5).timeout
 	tp.set_paused(true)
 	main.party.select([main.party.members[1], main.party.members[2]])
 	main.party.order_attack(foes[min(2, foes.size() - 1)], true)

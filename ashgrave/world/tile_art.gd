@@ -3,7 +3,7 @@ extends RefCounted
 ## Placeholder art painted at runtime: isometric ground diamonds and trees.
 ## Swap for real sprite sheets later by replacing build_ground_set/build_tree_set.
 
-const TW := 64
+const TW := 64   # authoring size; images are scaled up to WorldGen.TILE_W x TILE_H
 const TH := 32
 const VARIANTS := 3
 
@@ -44,13 +44,15 @@ static func build_ground_set() -> TileSet:
 					if y > TH * 0.5 + absf(x - TW * 0.5) * 0.5 - 2:
 						c = c.darkened(0.12)
 					img.set_pixel(ti * TW + x, v * TH + y, c)
+	var k := int(WorldGen.PX)
+	img.resize(img.get_width() * k, img.get_height() * k, Image.INTERPOLATE_NEAREST)
 	var ts := TileSet.new()
 	ts.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
 	ts.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
-	ts.tile_size = Vector2i(TW, TH)
+	ts.tile_size = Vector2i(WorldGen.TILE_W, WorldGen.TILE_H)
 	var src := TileSetAtlasSource.new()
 	src.texture = ImageTexture.create_from_image(img)
-	src.texture_region_size = Vector2i(TW, TH)
+	src.texture_region_size = Vector2i(WorldGen.TILE_W, WorldGen.TILE_H)
 	for ti in terrains.size():
 		for v in VARIANTS:
 			src.create_tile(Vector2i(ti, v))
@@ -90,17 +92,19 @@ static func build_tree_set() -> TileSet:
 				for x in range(cx - r, cx + r):
 					if x >= 0 and x < w and y >= 0 and y < h and pow(x - cx, 2) + pow(y - cy, 2) <= r * r:
 						img.set_pixel(ox + x, y, col)
+	var px := int(WorldGen.PX)
+	img.resize(img.get_width() * px, img.get_height() * px, Image.INTERPOLATE_NEAREST)
 	var ts := TileSet.new()
 	ts.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
 	ts.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
-	ts.tile_size = Vector2i(TW, TH)
+	ts.tile_size = Vector2i(WorldGen.TILE_W, WorldGen.TILE_H)
 	var src := TileSetAtlasSource.new()
 	src.texture = ImageTexture.create_from_image(img)
-	src.texture_region_size = Vector2i(w, h)
+	src.texture_region_size = Vector2i(w * px, h * px)
 	for k in 2:
 		src.create_tile(Vector2i(k, 0))
 		var data := src.get_tile_data(Vector2i(k, 0), 0)
-		data.texture_origin = Vector2i(0, 32)  # lift so trunk base sits on the cell centre
+		data.texture_origin = Vector2i(0, 32 * px)  # lift so trunk base sits on the cell centre
 		data.y_sort_origin = 0
 	ts.add_source(src, 0)
 	return ts

@@ -5,6 +5,7 @@ extends Node2D
 var kind := "barrow"
 
 func _draw() -> void:
+	draw_set_transform(Vector2.ZERO, 0, Vector2(WorldGen.PX, WorldGen.PX))
 	if kind == "barrow":
 		# low mound ringed by salt-crusted standing stones
 		var pts := PackedVector2Array()

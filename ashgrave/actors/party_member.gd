@@ -55,6 +55,7 @@ func recompute_stats() -> void:
 			set(k, float(get(k)) + bonus[k])
 	hp = clampf(max_hp * hp_frac, 1.0 if not downed else 0.0, max_hp)
 	stamina = minf(stamina, max_stamina)
+	refresh_look()
 
 func use_item(id: String, inv: Inventory) -> bool:
 	var d := Items.get_def(id)
@@ -108,5 +109,13 @@ func _on_damaged(source: Actor) -> void:
 	if current == null and orders.is_empty() and source and source.alive():
 		issue({"type": "attack", "target": source, "auto": true})
 
-func _draw_body(bob: float) -> void:
-	Figures.draw_person(self, look, facing, bob, _walk_t, not path.is_empty(), ranged)
+## Pick the LPC outfit and weapon art that match current equipment.
+func refresh_look() -> void:
+	if companion_id == "":
+		return
+	var look_ids := ArtMap.member_look(companion_id, equipment)
+	if sprite is LpcSprite and sprite.character == look_ids[0] and sprite.weapon == look_ids[1]:
+		return
+	var s := LpcSprite.new()
+	s.setup(look_ids[0], look_ids[1])
+	set_sprite(s)

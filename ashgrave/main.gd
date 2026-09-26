@@ -89,7 +89,7 @@ func _ready() -> void:
 	camera = Camera2D.new()
 	camera.position_smoothing_enabled = true
 	camera.position_smoothing_speed = 6.0
-	camera.zoom = Vector2(1.5, 1.5)
+	camera.zoom = Vector2(0.75, 0.75)
 	add_child(camera)
 	camera.position = party.members[0].position
 
@@ -127,10 +127,21 @@ func spawn_creature(type: String, at: Vector2i, camp_id := "") -> Creature:
 	c.tree_exiting.connect(func(): actors.erase(c))
 	return c
 
+var chunk_graves := {}            # chunk -> Array[Node] (grave props at risen camps)
+
 func _spawn_camps(ch: Vector2i) -> void:
 	var list: Array = []
 	if not spawn_encounters:
 		return
+	var graves: Array = []
+	for camp in Encounters.camps_for_chunk(world, ch):
+		if camp.type == "risen" or camp.type == "revenant":
+			var g := FlareSprite.new()
+			g.setup("cursed_grave")
+			g.position = ground.map_to_local(camp.cells[0] + Vector2i(1, -1))
+			ysorted.add_child(g)
+			graves.append(g)
+	chunk_graves[ch] = graves
 	for camp in Encounters.camps_for_chunk(world, ch):
 		if GameState.cleared_camps.has(camp.id):
 			continue
@@ -139,6 +150,10 @@ func _spawn_camps(ch: Vector2i) -> void:
 	camp_creatures[ch] = list
 
 func _despawn_camps(ch: Vector2i) -> void:
+	for g in chunk_graves.get(ch, []):
+		if is_instance_valid(g):
+			g.queue_free()
+	chunk_graves.erase(ch)
 	for c in camp_creatures.get(ch, []):
 		if is_instance_valid(c) and not c.aggressive():
 			c.queue_free()
@@ -257,6 +272,7 @@ func add_member(id: String, at: Vector2i) -> PartyMember:
 	m.abilities.assign(d.abilities)
 	ysorted.add_child(m)
 	m.place_at(at)
+	m.refresh_look()
 	party.members.append(m)
 	actors.append(m)
 	return m
@@ -454,9 +470,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_F9: load_game()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			camera.zoom = (camera.zoom * 1.1).clamp(Vector2(0.5, 0.5), Vector2(3, 3))
+			camera.zoom = (camera.zoom * 1.1).clamp(Vector2(0.3, 0.3), Vector2(1.6, 1.6))
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			camera.zoom = (camera.zoom / 1.1).clamp(Vector2(0.5, 0.5), Vector2(3, 3))
+			camera.zoom = (camera.zoom / 1.1).clamp(Vector2(0.3, 0.3), Vector2(1.6, 1.6))
 
 func terrain_under_mouse() -> String:
 	var c := ground.local_to_map(ground.to_local(get_global_mouse_position()))

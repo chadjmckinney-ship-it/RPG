@@ -5,6 +5,11 @@ extends RefCounted
 
 enum Terrain { WATER, MOOR, FOREST, FEN, HILLS, ROCK, ROAD, ASHFIELD }
 
+## Screen size of one cell; art is authored for 128x64. PX converts older 64x32-era pixel values.
+const TILE_W := 128
+const TILE_H := 64
+const PX := 2.0
+
 const CHUNK := 32
 const WORLD_CHUNKS := 16
 const SIZE := CHUNK * WORLD_CHUNKS  # 512 x 512 cells

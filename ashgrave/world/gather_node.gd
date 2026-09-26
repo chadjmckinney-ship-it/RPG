@@ -23,6 +23,7 @@ func _process(_d: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	draw_set_transform(Vector2.ZERO, 0, Vector2(WorldGen.PX, WorldGen.PX))
 	var ok := ready_to_harvest()
 	var a := 1.0 if ok else 0.35
 	match data.kind:

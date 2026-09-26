@@ -1,0 +1,179 @@
+{
+ "layout": {
+  "idle": {
+   "y": 0,
+   "size": 64,
+   "frames": 2,
+   "rows": 4
+  },
+  "walk": {
+   "y": 256,
+   "size": 64,
+   "frames": 9,
+   "rows": 4
+  },
+  "slash": {
+   "y": 512,
+   "size": 64,
+   "frames": 6,
+   "rows": 4
+  },
+  "slash_big": {
+   "y": 768,
+   "size": 192,
+   "frames": 6,
+   "rows": 4
+  },
+  "thrust": {
+   "y": 1536,
+   "size": 64,
+   "frames": 8,
+   "rows": 4
+  },
+  "shoot": {
+   "y": 1792,
+   "size": 64,
+   "frames": 13,
+   "rows": 4
+  },
+  "cast": {
+   "y": 2048,
+   "size": 64,
+   "frames": 7,
+   "rows": 4
+  },
+  "hurt": {
+   "y": 2304,
+   "size": 64,
+   "frames": 6,
+   "rows": 1
+  }
+ },
+ "width": 1152,
+ "height": 2368,
+ "characters": {
+  "maren": {
+   "body": "female",
+   "weapon": "longsword"
+  },
+  "maren_hide": {
+   "body": "female",
+   "weapon": "longsword"
+  },
+  "maren_mail": {
+   "body": "female",
+   "weapon": "longsword"
+  },
+  "maren_robes": {
+   "body": "female",
+   "weapon": "longsword"
+  },
+  "ketta": {
+   "body": "female",
+   "weapon": "bow"
+  },
+  "ketta_hide": {
+   "body": "female",
+   "weapon": "bow"
+  },
+  "ketta_mail": {
+   "body": "female",
+   "weapon": "bow"
+  },
+  "ketta_robes": {
+   "body": "female",
+   "weapon": "bow"
+  },
+  "oswin": {
+   "body": "male",
+   "weapon": "mace"
+  },
+  "oswin_hide": {
+   "body": "male",
+   "weapon": "mace"
+  },
+  "oswin_mail": {
+   "body": "male",
+   "weapon": "mace"
+  },
+  "oswin_robes": {
+   "body": "male",
+   "weapon": "mace"
+  },
+  "maud": {
+   "body": "female",
+   "weapon": "spear"
+  },
+  "nessa": {
+   "body": "female",
+   "weapon": ""
+  },
+  "harl": {
+   "body": "male",
+   "weapon": "longsword"
+  },
+  "bandit": {
+   "body": "male",
+   "weapon": "dagger"
+  },
+  "crossbow": {
+   "body": "male",
+   "weapon": "crossbow"
+  },
+  "cultist": {
+   "body": "male",
+   "weapon": "staff"
+  },
+  "ash_knight": {
+   "body": "male",
+   "weapon": "longsword"
+  },
+  "villager_f1": {
+   "body": "female",
+   "weapon": ""
+  },
+  "villager_f2": {
+   "body": "female",
+   "weapon": ""
+  },
+  "villager_m1": {
+   "body": "male",
+   "weapon": ""
+  },
+  "villager_m2": {
+   "body": "male",
+   "weapon": ""
+  },
+  "smith": {
+   "body": "male",
+   "weapon": ""
+  },
+  "keeper": {
+   "body": "female",
+   "weapon": ""
+  }
+ },
+ "weapons": {
+  "longsword": {
+   "attack": "slash_big"
+  },
+  "dagger": {
+   "attack": "slash"
+  },
+  "mace": {
+   "attack": "slash_big"
+  },
+  "spear": {
+   "attack": "thrust"
+  },
+  "bow": {
+   "attack": "shoot"
+  },
+  "crossbow": {
+   "attack": "thrust"
+  },
+  "staff": {
+   "attack": "cast"
+  }
+ }
+}

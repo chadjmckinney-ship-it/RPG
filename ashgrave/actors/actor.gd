@@ -36,6 +36,9 @@ var current = null          # order Dictionary in progress
 var statuses := {}          # id -> Dictionary with at least "time"
 var downed := false
 var facing := 1.0
+var face_vec := Vector2.DOWN   # screen-space facing, drives sprite direction
+var sprite: CharSprite         # animated art; null falls back to _draw_body
+var bar_height := 118.0        # where health bars and combat text float
 var selected := false:
 	set(v):
 		selected = v
@@ -97,11 +100,32 @@ func order_target_cell(o: Dictionary) -> Vector2i:
 
 # ---------------------------------------------------------------- loop
 
+func set_sprite(s: CharSprite) -> void:
+	if sprite:
+		sprite.queue_free()
+	sprite = s
+	add_child(s)
+	s.face(face_vec)
+
+func _update_sprite() -> void:
+	if sprite == null:
+		return
+	sprite.face(face_vec)
+	if downed:
+		sprite.play("die")
+	elif sprite.one_shot:
+		return
+	elif not path.is_empty() and not statuses.has("root"):
+		sprite.play("walk")
+	else:
+		sprite.play("idle")
+
 func _process(delta: float) -> void:
 	if TacticalPause.paused:
 		return
 	_tick_floaters(delta)
 	if downed:
+		_update_sprite()
 		queue_redraw()
 		return
 	_tick_statuses(delta)
@@ -113,6 +137,7 @@ func _process(delta: float) -> void:
 	_lunge = maxf(0.0, _lunge - delta)
 	for k in ability_cd:
 		ability_cd[k] = maxf(0.0, ability_cd[k] - delta)
+	_update_sprite()
 	if current == null and orders.is_empty():
 		_idle(delta)
 	if current == null and not orders.is_empty():
@@ -228,7 +253,7 @@ func _follow_path(delta: float) -> void:
 		return
 	var target := map_layer.map_to_local(path[0])
 	var mult: float = statuses.slow.mult if statuses.has("slow") else 1.0
-	var step := speed * mult * delta / world.cost(path[0])
+	var step := speed * WorldGen.PX * mult * delta / world.cost(path[0])
 	var to := target - position
 	_face(target)
 	_walk_t += delta
@@ -242,14 +267,18 @@ func _follow_path(delta: float) -> void:
 func _face(p: Vector2) -> void:
 	if absf(p.x - position.x) > 1.0:
 		facing = signf(p.x - position.x)
+	if (p - position).length_squared() > 1.0:
+		face_vec = (p - position).normalized()
 
 # ---------------------------------------------------------------- combat
 
 func _strike(tgt: Actor) -> void:
 	_lunge = 0.18
+	if sprite:
+		sprite.play("attack", true)
 	Audio.play("bow" if ranged else "swing")
 	if ranged and ctx and ctx.fx:
-		ctx.fx.tracer(global_position + Vector2(0, -26), tgt.global_position + Vector2(0, -20), Color(0.9, 0.85, 0.7))
+		ctx.fx.tracer(global_position + Vector2(0, -60), tgt.global_position + Vector2(0, -50), Color(0.9, 0.85, 0.7))
 	if tgt.evasion > 0.0 and randf() < tgt.evasion:
 		tgt._floaters.append({"text": "miss", "color": Color(0.7, 0.7, 0.75), "t": 0.0})
 		return
@@ -282,11 +311,13 @@ func _cast(id: String, tgt, tcell: Vector2i) -> void:
 	stamina -= a.cost
 	ability_cd[id] = a.cd
 	_lunge = 0.2
+	if sprite:
+		sprite.play("attack" if a.kind == "damage" else "cast", true)
 	log_msg("%s: %s" % [display_name, a.name])
 	match a.kind:
 		"damage":
 			if a.get("ranged", false) and ctx and ctx.fx:
-				ctx.fx.tracer(global_position + Vector2(0, -26), tgt.global_position + Vector2(0, -20), Color(1.0, 0.8, 0.4))
+				ctx.fx.tracer(global_position + Vector2(0, -60), tgt.global_position + Vector2(0, -50), Color(1.0, 0.8, 0.4))
 			var r := Effect.damage(self, tgt, a.power)
 			tgt.take_damage(r.amount, self, r.crit)
 			if a.has("status") and tgt.alive():
@@ -297,7 +328,7 @@ func _cast(id: String, tgt, tcell: Vector2i) -> void:
 			add_status(a.status.duplicate())
 		"area_status":
 			if ctx and ctx.fx:
-				ctx.fx.ring(map_layer.map_to_local(tcell), a.radius * 32.0, Color(0.6, 0.9, 0.5))
+				ctx.fx.ring(map_layer.map_to_local(tcell), a.radius * WorldGen.TILE_H, Color(0.6, 0.9, 0.5))
 			for other in (ctx.actors if ctx else []):
 				if is_instance_valid(other) and other.alive() and is_hostile_to(other) and Vector2(other.cell - tcell).length() <= a.radius:
 					other.add_status(a.status.duplicate())
@@ -310,6 +341,8 @@ func take_damage(amount: float, source: Actor = null, crit := false) -> void:
 	hp -= amount
 	_flash = 0.15
 	Audio.play("hit")
+	if sprite and sprite is FlareSprite and not sprite.one_shot and hp > 0.0:
+		sprite.play("hit", true)
 	_floaters.append({"text": ("%d!" if crit else "%d") % int(amount), "color": Color(1, 0.85, 0.3) if crit else (Color(1, 0.45, 0.4) if faction == "party" else Color(1, 1, 1)), "t": 0.0})
 	if source:
 		_on_damaged(source)
@@ -329,6 +362,8 @@ func heal(amount: float) -> void:
 
 func revive(fraction: float) -> void:
 	downed = false
+	if sprite:
+		sprite.play("idle", true)
 	hp = maxf(1.0, max_hp * fraction)
 	statuses.clear()
 	queue_redraw()
@@ -373,41 +408,42 @@ func _tick_floaters(delta: float) -> void:
 	_floaters = _floaters.filter(func(f): return f.t < 1.0)
 
 func _draw() -> void:
+	var k := WorldGen.PX
 	if selected:
-		draw_arc(Vector2.ZERO, 16, 0, TAU, 32, Color(0.95, 0.75, 0.35, 0.9), 2.0)
-		_ellipse(Vector2.ZERO, Vector2(17, 8.5), Color(0.95, 0.75, 0.35, 0.18))
-	_ellipse(Vector2(0, 1), Vector2(11, 5), Color(0, 0, 0, 0.35))
-	if downed:
-		draw_set_transform(Vector2(0, -4), -PI / 2 * facing, Vector2(0.9, 0.9))
-		_draw_body(0.0)
+		draw_arc(Vector2.ZERO, 17 * k, 0, TAU, 40, Color(0.95, 0.75, 0.35, 0.9), 2.5)
+		_ellipse(Vector2.ZERO, Vector2(18, 9) * k, Color(0.95, 0.75, 0.35, 0.18))
+	if sprite == null:
+		_ellipse(Vector2(0, 1), Vector2(11, 5) * k, Color(0, 0, 0, 0.35))
+		draw_set_transform(Vector2.ZERO, 0, Vector2(k, k))
+		if downed:
+			draw_set_transform(Vector2(0, -8), -PI / 2 * facing, Vector2(k, k) * 0.9)
+		_draw_body(0.0 if downed else (sin(_walk_t * 14.0) * 1.5 if not path.is_empty() else 0.0))
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
-	else:
-		var bob := sin(_walk_t * 14.0) * 1.5 if not path.is_empty() else 0.0
-		draw_set_transform(Vector2(facing * _lunge * 30.0, 0), 0, Vector2.ONE)
-		_draw_body(bob)
-		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
-		if _flash > 0.0:
-			draw_circle(Vector2(0, -26), 14, Color(1, 1, 1, _flash * 2.5))
+	elif sprite is LpcSprite:
+		_ellipse(Vector2(0, 2), Vector2(12, 5) * k, Color(0, 0, 0, 0.3))
+	if sprite:
+		sprite.modulate = Color(1.6, 1.6, 1.6) if _flash > 0.0 else Color.WHITE
+	if not downed:
 		_draw_bars()
 	for f in _floaters:
-		var y: float = -58.0 - f.t * 26.0
+		var y: float = -bar_height - 12.0 - f.t * 40.0
 		var c: Color = f.color
 		c.a = 1.0 - maxf(0.0, f.t - 0.6) / 0.4
-		draw_string(ThemeDB.fallback_font, Vector2(-12, y + 1), f.text, HORIZONTAL_ALIGNMENT_CENTER, 24, 15, Color(0, 0, 0, c.a))
-		draw_string(ThemeDB.fallback_font, Vector2(-13, y), f.text, HORIZONTAL_ALIGNMENT_CENTER, 24, 15, c)
+		draw_string(ThemeDB.fallback_font, Vector2(-24, y + 2), f.text, HORIZONTAL_ALIGNMENT_CENTER, 48, 26, Color(0, 0, 0, c.a))
+		draw_string(ThemeDB.fallback_font, Vector2(-25, y), f.text, HORIZONTAL_ALIGNMENT_CENTER, 48, 26, c)
 
 func _draw_bars() -> void:
 	if faction != "hostile" and hp >= max_hp and statuses.is_empty():
 		return
-	var w := 28.0
-	var y := -56.0
-	draw_rect(Rect2(-w / 2 - 1, y - 1, w + 2, 5), Color(0, 0, 0, 0.7))
-	draw_rect(Rect2(-w / 2, y, w * hp / max_hp, 3), Color(0.85, 0.25, 0.2) if faction != "party" else Color(0.4, 0.8, 0.4))
+	var w := 56.0
+	var y := -bar_height
+	draw_rect(Rect2(-w / 2 - 1, y - 1, w + 2, 8), Color(0, 0, 0, 0.7))
+	draw_rect(Rect2(-w / 2, y, w * hp / max_hp, 6), Color(0.85, 0.25, 0.2) if faction != "party" else Color(0.4, 0.8, 0.4))
 	var x := -w / 2
 	for id in statuses:
 		var col: Color = {"poison": Color(0.6, 0.9, 0.3), "slow": Color(0.4, 0.6, 1), "root": Color(0.6, 0.9, 0.5), "guard": Color(0.9, 0.85, 0.5), "bleed": Color(0.8, 0.15, 0.15), "burn": Color(1.0, 0.5, 0.15)}.get(id, Color.WHITE)
-		draw_rect(Rect2(x, y - 6, 4, 4), col)
-		x += 6
+		draw_rect(Rect2(x, y - 10, 8, 8), col)
+		x += 11
 
 ## Override to draw the figure; origin is the feet.
 func _draw_body(_bob: float) -> void:

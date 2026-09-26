@@ -11,7 +11,6 @@ const FACTION_GOODS := {"church": ["penitent-robes"], "companies": ["barrow-blad
 
 var job := "villager"     # smith | keeper | villager | elder | wisewoman | captain | companion
 var npc_id := ""          # stable id used by dialogue and quests
-var look := {}            # companions use the party figure
 var village: Dictionary = {}
 var work_cell := Vector2i.ZERO
 var tavern_cell := Vector2i.ZERO
@@ -27,6 +26,7 @@ func setup(v: Dictionary, role: String, index: int) -> void:
 	job = role
 	display_name = _name_for(v, index)
 	npc_id = "%s:%s" % [v.id, role] if role != "villager" else "%s:villager%d" % [v.id, index]
+	refresh_look()
 	setup_stats({"max_hp": 40.0, "defense": 3.0, "speed": 90.0})
 	tavern_cell = Settlements.door_cell(v, "tavern") + Vector2i(index % 2, 0)
 	match role:
@@ -41,8 +41,8 @@ func setup_special(v: Dictionary, id: String, def: Dictionary) -> void:
 	setup(v, def.job, 5)
 	npc_id = id
 	display_name = def.name
+	refresh_look()
 	if def.job == "companion":
-		look = Companions.DEFS[id].look
 		ranged = Companions.DEFS[id].stats.get("ranged", false)
 	if def.job in ["companion", "wisewoman"]:
 		home_cell = tavern_cell if def.job == "companion" else home_cell
@@ -97,28 +97,11 @@ func _name_for(v: Dictionary, index: int) -> String:
 	var title: String = {"smith": "the smith", "keeper": "of the tavern"}.get(job, "")
 	return names[h % names.size()] + ((" " + title) if title != "" else "")
 
-func _draw_body(bob: float) -> void:
-	if not look.is_empty():
-		Figures.draw_person(self, look, facing, bob, _walk_t, not path.is_empty(), ranged)
-		return
-	var y := -bob
-	var f := facing
-	var tunic: Color = {"church": Color("7a7060"), "companies": Color("6a3a2a"), "hollow": Color("4a5a3a")}.get(trader_faction(), Color("5a5048"))
-	draw_rect(Rect2(-4, y - 13, 3, 13), Color("2e2a26"))
-	draw_rect(Rect2(1, y - 13, 3, 13), Color("2e2a26"))
-	draw_colored_polygon(PackedVector2Array([Vector2(-7, y - 36), Vector2(7, y - 36), Vector2(9, y - 12), Vector2(-9, y - 12)]), tunic)
-	if job == "smith":
-		draw_rect(Rect2(-6, y - 30, 12, 16), Color("3a2a1e"))  # apron
-	elif job == "elder" or job == "wisewoman":
-		draw_colored_polygon(PackedVector2Array([Vector2(-8, y - 38), Vector2(8, y - 38), Vector2(11, y), Vector2(-11, y)]), tunic.darkened(0.3))
-	elif job == "captain":
-		draw_rect(Rect2(-8, y - 36, 16, 8), Color("8a8a90"))  # pauldrons
-	elif job == "keeper":
-		draw_rect(Rect2(-6, y - 26, 12, 12), Color("c8c0a8"))
-	var head := Vector2(f, y - 42)
-	draw_circle(head, 6.0, Color("d0a888"))
-	draw_arc(head + Vector2(0, -1), 6.0, PI * 1.05, PI * 1.95, 12, Color("4a3a2a"), 3.5)
-	draw_circle(head + Vector2(f * 3, 0), 1.0, Color(0.1, 0.08, 0.08))
+func refresh_look() -> void:
+	var look_ids := ArtMap.villager_look(self)
+	var s := LpcSprite.new()
+	s.setup(look_ids[0], look_ids[1])
+	set_sprite(s)
 
 func on_interact(_who) -> void:
 	Events.talk_requested.emit(self)

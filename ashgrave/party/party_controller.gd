@@ -6,7 +6,7 @@ extends Node2D
 ##  1-3 pick a member, Tab everyone.  Orders work while tactically paused.
 
 const FORMATION: Array[Vector2i] = [Vector2i(0, 0), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1), Vector2i(1, 1), Vector2i(-2, 0)]
-const PICK_RADIUS := 26.0
+const PICK_RADIUS := 52.0
 
 var members: Array[PartyMember] = []
 var selection: Array[PartyMember] = []
@@ -51,10 +51,10 @@ func villager_at(p: Vector2) -> Actor:
 
 func gather_node_at(p: Vector2) -> Node2D:
 	var best: Node2D = null
-	var best_d := 22.0
+	var best_d := 44.0
 	for n in (Actor.ctx.gather_nodes if Actor.ctx else []):
 		if is_instance_valid(n):
-			var d: float = (n.global_position + Vector2(0, -6)).distance_to(p)
+			var d: float = (n.global_position + Vector2(0, -12)).distance_to(p)
 			if d < best_d:
 				best_d = d
 				best = n
@@ -68,7 +68,7 @@ func _actor_of(p: Vector2, faction: String) -> Actor:
 			continue
 		if a.faction != faction:
 			continue
-		var d: float = (a.global_position + Vector2(0, -22)).distance_to(p)
+		var d: float = (a.global_position + Vector2(0, -48)).distance_to(p)
 		if d < best_d:
 			best_d = d
 			best = a
@@ -130,7 +130,7 @@ func _finish_selection(additive: bool) -> void:
 			picked = [m]
 	else:
 		for m in members:
-			if rect.has_point(m.global_position + Vector2(0, -18)):
+			if rect.has_point(m.global_position + Vector2(0, -40)):
 				picked.append(m)
 	if picked.is_empty():
 		return
@@ -237,7 +237,7 @@ func _draw() -> void:
 	if _marker_t < 1.2:
 		var p := map_layer.map_to_local(marker_cell)
 		var s := 1.0 - _marker_t / 1.2
-		draw_arc(p, 10 + 8 * (1 - s), 0, TAU, 24, Color(0.95, 0.75, 0.35, s), 2.0)
+		draw_arc(p, 20 + 16 * (1 - s), 0, TAU, 32, Color(0.95, 0.75, 0.35, s), 3.0)
 	# Order queues for the selection: dashed legs, gold for moves, red for attacks.
 	var alpha := 0.9 if TacticalPause.paused else 0.35
 	for m in selection:
@@ -251,17 +251,17 @@ func _draw() -> void:
 		for o in list:
 			var to := map_layer.map_to_local(m.order_target_cell(o))
 			var col := Color(0.95, 0.75, 0.35, alpha) if o.type == "move" else (Color(0.9, 0.35, 0.3, alpha) if o.type == "attack" else Color(0.5, 0.8, 1.0, alpha))
-			draw_dashed_line(from, to, col, 1.5, 6.0)
-			draw_circle(to, 3.0, col)
+			draw_dashed_line(from, to, col, 3.0, 12.0)
+			draw_circle(to, 6.0, col)
 			from = to
 	if not targeting.is_empty():
 		var a := Abilities.get_def(targeting.id)
 		var mp := get_global_mouse_position()
-		draw_arc(mp, 12, 0, TAU, 20, Color(0.5, 0.8, 1.0, 0.9), 2.0)
+		draw_arc(mp, 24, 0, TAU, 24, Color(0.5, 0.8, 1.0, 0.9), 3.0)
 		if a.target == "cell":
 			var pts := PackedVector2Array()
 			var r: float = a.radius
 			for i in 25:
 				var ang := TAU * i / 24.0
-				pts.append(mp + Vector2(cos(ang) * r * 32.0, sin(ang) * r * 16.0))
+				pts.append(mp + Vector2(cos(ang) * r * WorldGen.TILE_W / 2.0, sin(ang) * r * WorldGen.TILE_H / 2.0))
 			draw_polyline(pts, Color(0.5, 0.9, 0.5, 0.8), 1.5)
