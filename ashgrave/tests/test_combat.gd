@@ -2,6 +2,7 @@ extends TestCase
 ## Combat rules and scripted skirmishes against the real main scene.
 
 func _boot() -> Node:
+	GameState.recruited = ["maren", "oswin", "ketta"]
 	var main: Node = load("res://main.tscn").instantiate()
 	main.spawn_encounters = false
 	tree.root.add_child(main)

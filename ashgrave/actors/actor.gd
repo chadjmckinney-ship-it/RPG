@@ -89,7 +89,7 @@ func is_moving() -> bool:
 	return not path.is_empty() or (current != null and current.type == "move")
 
 func order_target_cell(o: Dictionary) -> Vector2i:
-	if o.has("target") and o.target is Actor and is_instance_valid(o.target):
+	if o.has("target") and is_instance_valid(o.target) and o.target is Actor:
 		return o.target.cell
 	return o.get("cell", cell)
 

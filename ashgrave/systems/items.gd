@@ -13,6 +13,9 @@ const DEFS := {
 	"iron-ore": {"name": "Iron ore", "type": "material", "value": 4},
 	"deadwood": {"name": "Deadwood", "type": "material", "value": 2},
 
+	"tithe-ledger": {"name": "Tithe Ledger", "type": "key", "value": 0, "desc": "A Church burial ledger, salt-stained, recovered from the Drowned Barrow."},
+	"sealed-letter": {"name": "Sealed letter", "type": "key", "value": 0, "desc": "Wax-sealed. Not yours to open."},
+
 	"bandage": {"name": "Bandage", "type": "consumable", "value": 6, "heal": 30.0, "desc": "Heals 30."},
 	"antivenom": {"name": "Antivenom", "type": "consumable", "value": 10, "cure": ["poison"], "heal": 5.0, "desc": "Cures poison."},
 	"fen-tonic": {"name": "Fen tonic", "type": "consumable", "value": 18, "heal": 65.0, "desc": "Heals 65."},

@@ -9,6 +9,13 @@ var inventory := Inventory.new()
 var reputation := {}
 var cleared_camps := {}   # camp id -> true
 var harvested := {}       # gather node id -> day harvested
+var flags := {}
+var quests := {}          # quest id -> quest dictionary (see QuestLog)
+var tracked := ""
+var quest_counter := 0
+var recruited: Array = ["maren"]
+var approval := {}        # companion id -> -100..100
+var bonuses := {}         # companion id -> {stat: bonus} from companion quests
 ## A save waiting for main.gd to apply after a scene reload.
 var pending_load := {}
 
@@ -22,6 +29,13 @@ func reset() -> void:
 	reputation = Factions.START.duplicate()
 	cleared_camps = {}
 	harvested = {}
+	flags = {}
+	quests = {}
+	tracked = ""
+	quest_counter = 0
+	recruited = ["maren"]
+	approval = {"oswin": 0, "ketta": 0}
+	bonuses = {}
 
 func new_world(seed_value: int = -1) -> void:
 	world_seed = seed_value if seed_value >= 0 else randi() % 1_000_000
@@ -40,6 +54,8 @@ func to_dict(party_state: Array) -> Dictionary:
 		"version": 1, "seed": world_seed, "time": TimeOfDay.time, "day": TimeOfDay.day,
 		"inventory": inventory.counts.duplicate(), "reputation": reputation.duplicate(),
 		"cleared_camps": cleared_camps.keys(), "harvested": harvested.duplicate(), "party": party_state,
+		"flags": flags.keys(), "quests": quests.duplicate(true), "tracked": tracked, "quest_counter": quest_counter,
+		"recruited": recruited.duplicate(), "approval": approval.duplicate(), "bonuses": bonuses.duplicate(true),
 	}
 
 func load_dict(d: Dictionary) -> void:
@@ -59,6 +75,20 @@ func load_dict(d: Dictionary) -> void:
 	harvested = {}
 	for k in d.harvested:
 		harvested[k] = int(d.harvested[k])
+	flags = {}
+	for k in d.get("flags", []):
+		flags[k] = true
+	quests = d.get("quests", {}).duplicate(true)
+	for q in quests.values():
+		q.stage = int(q.stage)          # JSON turns ints into floats
+		q.data.count = int(q.data.get("count", 0))
+	tracked = d.get("tracked", "")
+	quest_counter = int(d.get("quest_counter", 0))
+	recruited = d.get("recruited", ["maren"]).duplicate()
+	approval = {}
+	for k in d.get("approval", {}):
+		approval[k] = int(d.approval[k])
+	bonuses = d.get("bonuses", {}).duplicate(true)
 
 func write_save(data: Dictionary) -> bool:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -73,3 +103,8 @@ func read_save() -> Dictionary:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
 	var parsed = JSON.parse_string(f.get_as_text())
 	return parsed if parsed is Dictionary else {}
+
+func add_bonus(companion: String, stat: String, amount: float) -> void:
+	if not bonuses.has(companion):
+		bonuses[companion] = {}
+	bonuses[companion][stat] = float(bonuses[companion].get(stat, 0.0)) + amount

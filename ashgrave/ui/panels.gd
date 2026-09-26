@@ -17,6 +17,8 @@ var content: VBoxContainer
 var mode := ""          # "" | pack | trade
 var tab := "pack"
 var trader: Villager
+var dialogue: Dialogue
+var note_text := ""
 var _was_paused := false
 
 func setup(m: Node) -> void:
@@ -76,6 +78,19 @@ func open_trade(v: Node) -> void:
 	trader = v
 	_open("trade")
 
+func open_dialogue(v: Node) -> void:
+	dialogue = Dialogue.new(v)
+	trader = v
+	_open("dialogue")
+
+func open_quests() -> void:
+	tab = "quests"
+	_open("pack")
+
+func show_note(text: String) -> void:
+	note_text = text
+	_open("note")
+
 func _open(which: String) -> void:
 	if mode == "":
 		_was_paused = TacticalPause.paused
@@ -97,6 +112,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if mode != "" and event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		close_all()
 		get_viewport().set_input_as_handled()
+	elif mode == "dialogue" and event is InputEventKey and event.pressed and event.keycode >= KEY_1 and event.keycode <= KEY_9:
+		_pick(event.keycode - KEY_1)
+		get_viewport().set_input_as_handled()
 
 func _refresh_if_open() -> void:
 	if mode != "":
@@ -112,7 +130,7 @@ func refresh() -> void:
 		c.queue_free()
 	if mode == "pack":
 		title.text = "The company's pack — %d coin" % GameState.inventory.count("coin")
-		for t in [["pack", "Items"], ["gear", "Gear"], ["craft", "Crafting"], ["factions", "Factions"]]:
+		for t in [["pack", "Items"], ["gear", "Gear"], ["craft", "Crafting"], ["quests", "Quests"], ["factions", "Factions"]]:
 			var b := Button.new()
 			b.text = t[1]
 			b.toggle_mode = true
@@ -122,6 +140,15 @@ func refresh() -> void:
 		call("_tab_" + tab)
 	elif mode == "trade":
 		_trade()
+	elif mode == "dialogue":
+		_dialogue()
+	elif mode == "note":
+		title.text = ""
+		content.add_child(_label(note_text, 17, INK))
+		var b := Button.new()
+		b.text = "Continue"
+		b.pressed.connect(close_all)
+		content.add_child(b)
 
 # ---------------------------------------------------------------- tabs
 
@@ -170,6 +197,51 @@ func _tab_craft() -> void:
 				Events.combat_message.emit("Crafted %s." % Items.item_name(id))
 			refresh()
 		_row(out, detail, "Craft", do_craft, not ok)
+
+func _tab_quests() -> void:
+	var list := GameState.quests.values()
+	if list.is_empty():
+		content.add_child(_label("No quests yet. Talk to Warden Maud, and ask traders for work.", 14, MUTED))
+	for q in list.filter(func(q): return q.status == "active"):
+		var tracked: bool = GameState.tracked == q.id
+		var st: Dictionary = QuestLog.current(q)
+		var extra := ""
+		if st.obj.type == "kill_type":
+			extra = " (%d/%d)" % [q.data.count, st.obj.count]
+		var track := func(): GameState.tracked = q.id; refresh()
+		_row(("▶ " if tracked else "") + q.title, st.text + extra, "Tracked" if tracked else "Track", track, tracked)
+	var done := list.filter(func(q): return q.status == "done")
+	if not done.is_empty():
+		_section("Completed")
+		for q in done:
+			_row(q.title, "", "")
+	_section("Companions")
+	for id in ["oswin", "ketta"]:
+		var d: Dictionary = Companions.DEFS[id]
+		var status := "In the company" if GameState.recruited.has(id) else "Not met"
+		_row(d.name, "%s · approval %+d" % [status, GameState.approval.get(id, 0)])
+
+func _dialogue() -> void:
+	var n: Dictionary = dialogue.node
+	title.text = n.speaker
+	content.add_child(_label(n.text, 16, INK))
+	content.add_child(HSeparator.new())
+	for i in n.choices.size():
+		var c: Dictionary = n.choices[i]
+		var b := Button.new()
+		b.text = "%d. %s" % [i + 1, c.label]
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.disabled = not c.get("enabled", true)
+		b.pressed.connect(_pick.bind(i))
+		content.add_child(b)
+
+func _pick(i: int) -> void:
+	if not dialogue.choose(i):
+		return
+	match dialogue.result:
+		"end": close_all()
+		"trade": open_trade(dialogue.npc)
+		_: refresh()
 
 func _tab_factions() -> void:
 	for f in Factions.NAMES:

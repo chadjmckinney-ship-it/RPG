@@ -3,6 +3,7 @@ extends TestCase
 
 func _boot() -> Node:
 	GameState.reset()
+	GameState.recruited = ["maren", "oswin", "ketta"]
 	var main: Node = load("res://main.tscn").instantiate()
 	main.spawn_encounters = false
 	tree.root.add_child(main)

@@ -1,21 +1,6 @@
 extends Node2D
 ## Builds the world scene in code: streamed terrain, y-sorted actors, party, creatures, camera, HUD.
 
-const PARTY := [
-	{"name": "Maren Vey", "role": "Deserter scout", "abilities": ["quick_shot", "hamstring"],
-		"stats": {"max_hp": 72.0, "attack": 12.0, "defense": 5.0, "speed": 160.0, "attack_range": 1.5, "attack_cooldown": 1.0},
-		"look": {"skin": Color("e0b894"), "hair": Color("7a2e22"), "hair_long": true, "coat": Color("3b2e2a"),
-		"body": Color("5c3a2c"), "trim": Color("b08a4a"), "legs": Color("2a2422"), "slim": true, "hood": false}},
-	{"name": "Brother Oswin", "role": "Penitent", "abilities": ["shield_wall", "mending"],
-		"stats": {"max_hp": 96.0, "attack": 9.0, "defense": 9.0, "speed": 135.0, "attack_range": 1.5, "attack_cooldown": 1.3},
-		"look": {"skin": Color("c89e7c"), "hair": Color("4a4038"), "coat": Color("4a4a52"), "body": Color("6a6a70"),
-		"trim": Color("9a8a60"), "legs": Color("2e2e34"), "hood": true}},
-	{"name": "Ketta", "role": "Poacher", "abilities": ["snare", "aimed_shot"],
-		"stats": {"max_hp": 60.0, "attack": 10.0, "defense": 4.0, "speed": 155.0, "attack_range": 6.0, "attack_cooldown": 1.5, "ranged": true},
-		"look": {"skin": Color("b98a66"), "hair": Color("2a2018"), "coat": Color("3a4630"), "body": Color("4f5a3a"),
-		"trim": Color("7a6a42"), "legs": Color("2a2a22"), "slim": true}},
-]
-
 const OUT_OF_COMBAT_REGEN := 3.0   # hp/s
 const REVIVE_DELAY := 4.0          # seconds of calm before downed members get up
 
@@ -40,6 +25,7 @@ var calm_time := 0.0
 var in_combat := false
 var _low_hp_warned := {}
 var _defeat_timer := -1.0
+var _quest_timer := 0.0
 var spawn_encounters := true     # tests switch this off before adding the scene
 
 func _ready() -> void:
@@ -87,20 +73,9 @@ func _ready() -> void:
 
 	var spawn := world.spawn_cell()
 	pathfinder.ensure_covers(spawn)
-	for i in PARTY.size():
-		var d: Dictionary = PARTY[i]
-		var m := PartyMember.new()
-		m.display_name = d.name
-		m.role = d.role
-		m.look.merge(d.look, true)
-		m.map_layer = ground
-		m.world = world
-		m.setup_stats(d.stats)
-		m.abilities.assign(d.abilities)
-		ysorted.add_child(m)
-		m.place_at(party._free_near(spawn + PartyController.FORMATION[i], {}))
-		party.members.append(m)
-		actors.append(m)
+	for id in Companions.ORDER:
+		if GameState.recruited.has(id):
+			add_member(id, party._free_near(spawn + PartyController.FORMATION[party.members.size()], {}))
 	party.select([party.members[0]])
 	if not GameState.pending_load.is_empty():
 		var data := GameState.pending_load
@@ -127,7 +102,10 @@ func _ready() -> void:
 	panels = Panels.new()
 	add_child(panels)
 	panels.setup(self)
-	Events.talk_requested.connect(panels.open_trade)
+	Events.talk_requested.connect(panels.open_dialogue)
+	Events.story_effect.connect(_on_story_effect)
+	if ScriptOps.check("stage:mq_dust:2"):
+		_spawn_barrow()
 	log_msg("Maren Vey's company makes camp at the edge of the wilds.")
 
 func log_msg(text: String) -> void:
@@ -171,12 +149,14 @@ func _on_creature_died(c: Actor) -> void:
 		GameState.change_rep(f, KILL_REP[c.type_id][f])
 	var camp: String = c.camp_id
 	if camp == "":
+		QuestLog.notify_kill(c.type_id, "")
 		return
 	for other in actors:
-		if other is Creature and other != c and other.camp_id == camp and other.alive():
+		if is_instance_valid(other) and other is Creature and other != c and other.camp_id == camp and other.alive():
 			return
 	GameState.cleared_camps[camp] = true
 	log_msg("The camp falls silent.")
+	QuestLog.notify_kill(c.type_id, camp)
 	var v := world.village_near(c.cell, 48.0)
 	if not v.is_empty():
 		log_msg("Word reaches %s." % v.name)
@@ -204,6 +184,20 @@ func _spawn_props(ch: Vector2i) -> void:
 			st.position = ground.map_to_local(a + Vector2i(1, 1)) + Vector2(0, 16)
 			ysorted.add_child(st)
 			list.append(st)
+		var specials := Story.special_npcs(world)
+		for id in specials:
+			var sp: Dictionary = specials[id]
+			if sp.village != v.id or GameState.recruited.has(id):
+				continue
+			var npc := Villager.new()
+			npc.map_layer = ground
+			npc.world = world
+			npc.setup_special(v, id, sp)
+			ysorted.add_child(npc)
+			npc.place_at(party._free_near(npc.schedule_target(TimeOfDay.hour()), {}))
+			actors.append(npc)
+			npc.tree_exiting.connect(func(): actors.erase(npc))
+			list.append(npc)
 		var jobs := ["smith", "keeper", "villager", "villager"]
 		for i in jobs.size():
 			var vil := Villager.new()
@@ -215,6 +209,15 @@ func _spawn_props(ch: Vector2i) -> void:
 			actors.append(vil)
 			vil.tree_exiting.connect(func(): actors.erase(vil))
 			list.append(vil)
+	var story := Story.setup(world)
+	for kind in ["barrow", "chapel"]:
+		var at: Vector2i = story[kind]
+		if streamer.chunk_of(at) == ch:
+			var lm := Landmark.new()
+			lm.kind = kind
+			lm.position = ground.map_to_local(at)
+			ysorted.add_child(lm)
+			list.append(lm)
 	for d in Gathering.nodes_for_chunk(world, ch):
 		var n := GatherNode.new()
 		n.data = d
@@ -230,6 +233,68 @@ func _despawn_props(ch: Vector2i) -> void:
 		if is_instance_valid(n):
 			n.queue_free()
 	chunk_props.erase(ch)
+
+# ---------------------------------------------------------------- party & story
+
+func add_member(id: String, at: Vector2i) -> PartyMember:
+	var d: Dictionary = Companions.DEFS[id]
+	var m := PartyMember.new()
+	m.companion_id = id
+	m.display_name = d.name
+	m.role = d.role
+	m.look.merge(d.look, true)
+	m.map_layer = ground
+	m.world = world
+	var stats: Dictionary = d.stats.duplicate()
+	for k in GameState.bonuses.get(id, {}):
+		stats[k] = float(stats.get(k, 0.0)) + float(GameState.bonuses[id][k])
+	m.setup_stats(stats)
+	m.abilities.assign(d.abilities)
+	ysorted.add_child(m)
+	m.place_at(at)
+	party.members.append(m)
+	actors.append(m)
+	return m
+
+func _on_story_effect(effect: String) -> void:
+	var p := effect.split(":")
+	match p[0]:
+		"recruit":
+			var id := p[1]
+			if GameState.recruited.has(id):
+				return
+			var at := party.leader().cell
+			for a in actors.duplicate():
+				if is_instance_valid(a) and a is Villager and a.npc_id == id:
+					at = a.cell
+					a.queue_free()
+			GameState.recruited.append(id)
+			var m := add_member(id, party._free_near(at, {}))
+			log_msg("%s joins the company." % m.display_name)
+			QuestLog.start("cq_" + id)
+		"spawn":
+			if p[1] == "barrow":
+				_spawn_barrow()
+		"stat":
+			GameState.add_bonus(p[1], p[2], float(p[3]))
+			for m in party.members:
+				if m.companion_id == p[1]:
+					m.base_stats[p[2]] = float(m.base_stats.get(p[2], 0.0)) + float(p[3])
+					m.recompute_stats()
+			log_msg("%s grows stronger (%s %+d)." % [Companions.DEFS[p[1]].name, p[2].replace("max_", "").to_upper(), int(p[3])])
+		"note":
+			panels.show_note(effect.substr(5))
+
+func _spawn_barrow() -> void:
+	var at: Vector2i = Story.setup(world).barrow
+	for a in actors:
+		if is_instance_valid(a) and a is Creature and a.camp_id == "story:barrow" and a.alive():
+			return
+	pathfinder.ensure_covers(party.leader().cell)
+	spawn_creature("barrow_lord", party._free_near(at, {}), "story:barrow")
+	for off in [Vector2i(2, 1), Vector2i(-2, 1)]:
+		spawn_creature("risen", party._free_near(at + off, {}), "story:barrow")
+	log_msg("The barrow stones grind aside. Something drowned climbs out.")
 
 ## Crafting stations available right now.
 func stations() -> Array:
@@ -298,11 +363,15 @@ func _process(delta: float) -> void:
 	if TacticalPause.paused:
 		return
 	_update_combat_state(delta)
+	_quest_timer -= delta
+	if _quest_timer <= 0.0:
+		_quest_timer = 0.5
+		QuestLog.notify_positions(party.members.filter(func(m): return m.alive()).map(func(m): return m.cell))
 
 func _update_combat_state(delta: float) -> void:
 	var fighting := false
 	for a in actors:
-		if a is Creature and a.alive() and a.aggressive():
+		if is_instance_valid(a) and a is Creature and a.alive() and a.aggressive():
 			fighting = true
 			break
 	in_combat = fighting
@@ -361,6 +430,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_I: panels.toggle_pack()
+			KEY_J: panels.open_quests()
 			KEY_F5: save_game()
 			KEY_F9: load_game()
 	if event is InputEventMouseButton and event.pressed:

@@ -2,6 +2,8 @@ extends TestCase
 ## Boots the real main scene and drives the party.
 
 func test_main_scene_boots_and_moves_party() -> void:
+	GameState.reset()
+	GameState.recruited = ["maren", "oswin", "ketta"]
 	var main: Node = load("res://main.tscn").instantiate()
 	main.spawn_encounters = false
 	tree.root.add_child(main)

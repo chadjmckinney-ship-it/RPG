@@ -14,6 +14,8 @@ var banner: Label
 var log_label: Label
 var cards: Control
 var hint: Label
+var tracker: Label
+var arrow: Control
 
 func setup(m: Node) -> void:
 	main = m
@@ -61,6 +63,19 @@ func setup(m: Node) -> void:
 	hint.offset_top = 100
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	Events.paused_changed.connect(func(p): banner.visible = p)
+	tracker = _label(15, Color("d8c8a0"))
+	tracker.anchor_left = 1.0
+	tracker.anchor_right = 1.0
+	tracker.offset_left = -420
+	tracker.offset_right = -16
+	tracker.offset_top = 96
+	tracker.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	tracker.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	arrow = Control.new()
+	arrow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	arrow.draw.connect(_draw_arrow)
+	add_child(arrow)
 
 func _label(size: int, col: Color) -> Label:
 	var l := Label.new()
@@ -80,6 +95,9 @@ func _process(_d: float) -> void:
 	hint.text = "" if t.is_empty() else "%s — choose a target (right-click or Esc to cancel)" % Abilities.get_def(t.id).name
 	banner.text = "PAUSED — give orders, Space to resume" if TacticalPause.paused else ""
 	cards.queue_redraw()
+	arrow.queue_redraw()
+	var q: Dictionary = GameState.quests.get(GameState.tracked, {})
+	tracker.text = "" if q.is_empty() or q.status != "active" else "%s\n%s\n(J: quests)" % [q.title, QuestLog.current(q).text]
 
 func _draw_cards() -> void:
 	var font := ThemeDB.fallback_font
@@ -113,3 +131,28 @@ func _bar(p: Vector2, w: float, frac: float, col: Color, text: String) -> void:
 	cards.draw_rect(Rect2(p, Vector2(w * clampf(frac, 0.0, 1.0), 7)), col)
 	if text != "":
 		cards.draw_string(ThemeDB.fallback_font, p + Vector2(w - 60, -1), text, HORIZONTAL_ALIGNMENT_RIGHT, 60, 10, INK)
+
+## Objective marker: a diamond on the target if visible, else an arrow at the screen edge.
+func _draw_arrow() -> void:
+	var q: Dictionary = GameState.quests.get(GameState.tracked, {})
+	if q.is_empty() or q.status != "active":
+		return
+	var cell = QuestLog.target_cell(q)
+	if cell == null:
+		return
+	var world_pos: Vector2 = main.ground.map_to_local(cell)
+	var screen: Vector2 = main.get_viewport().get_canvas_transform() * world_pos
+	var size := arrow.get_viewport_rect().size
+	var col := Color(0.95, 0.75, 0.35, 0.9)
+	var margin := 40.0
+	var dist := int(main.party.leader().cell_distance(cell))
+	if Rect2(Vector2(margin, margin), size - Vector2(margin, margin) * 2).has_point(screen):
+		arrow.draw_colored_polygon(PackedVector2Array([screen + Vector2(0, -60), screen + Vector2(8, -50), screen + Vector2(0, -40), screen + Vector2(-8, -50)]), col)
+		return
+	var center := size / 2.0
+	var dir := (screen - center).normalized()
+	var t := minf((size.x / 2.0 - margin) / maxf(absf(dir.x), 0.001), (size.y / 2.0 - margin) / maxf(absf(dir.y), 0.001))
+	var p := center + dir * t
+	var side := dir.orthogonal() * 10.0
+	arrow.draw_colored_polygon(PackedVector2Array([p + dir * 16.0, p - dir * 8.0 + side, p - dir * 8.0 - side]), col)
+	arrow.draw_string(ThemeDB.fallback_font, p - dir * 34.0 - Vector2(20, -5), "%d" % dist, HORIZONTAL_ALIGNMENT_CENTER, 40, 13, col)

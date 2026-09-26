@@ -137,8 +137,10 @@ func _drop_loot() -> void:
 func _draw_body(bob: float) -> void:
 	var f := facing
 	var y := -bob
+	if type_id == "barrow_lord":
+		draw_set_transform(Vector2.ZERO, 0, Vector2(1.35, 1.35))
 	match type_id:
-		"risen":
+		"risen", "barrow_lord":
 			var bone := Color("c8c0a8")
 			draw_rect(Rect2(-4, y - 14, 3, 14), bone.darkened(0.3))
 			draw_rect(Rect2(1, y - 14, 3, 14), bone.darkened(0.3))
