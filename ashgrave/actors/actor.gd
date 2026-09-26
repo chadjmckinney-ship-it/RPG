@@ -21,6 +21,8 @@ var attack_range := 1.5
 var attack_cooldown := 1.2
 var ranged := false
 var night_bonus := 0.0
+var evasion := 0.0        # chance to dodge a normal attack
+var lifesteal := 0.0      # fraction of melee damage returned as health
 var on_hit_status := {}
 var abilities: Array[String] = []
 var ability_cd := {}
@@ -170,7 +172,8 @@ func _run_order(delta: float) -> void:
 		return
 	# attack / ability
 	var tgt = o.get("target")
-	if tgt != null and (not is_instance_valid(tgt) or tgt.downed):
+	# A freed object compares equal to null, so test the key, not the value.
+	if o.has("target") and (not is_instance_valid(tgt) or tgt.downed):
 		current = null
 		path.clear()
 		return
@@ -246,8 +249,13 @@ func _strike(tgt: Actor) -> void:
 	_lunge = 0.18
 	if ranged and ctx and ctx.fx:
 		ctx.fx.tracer(global_position + Vector2(0, -26), tgt.global_position + Vector2(0, -20), Color(0.9, 0.85, 0.7))
+	if tgt.evasion > 0.0 and randf() < tgt.evasion:
+		tgt._floaters.append({"text": "miss", "color": Color(0.7, 0.7, 0.75), "t": 0.0})
+		return
 	var r := Effect.damage(self, tgt)
 	tgt.take_damage(r.amount, self, r.crit)
+	if lifesteal > 0.0:
+		heal(r.amount * lifesteal)
 	if not on_hit_status.is_empty() and tgt.alive():
 		tgt.add_status(on_hit_status.duplicate())
 
@@ -392,7 +400,7 @@ func _draw_bars() -> void:
 	draw_rect(Rect2(-w / 2, y, w * hp / max_hp, 3), Color(0.85, 0.25, 0.2) if faction != "party" else Color(0.4, 0.8, 0.4))
 	var x := -w / 2
 	for id in statuses:
-		var col: Color = {"poison": Color(0.6, 0.9, 0.3), "slow": Color(0.4, 0.6, 1), "root": Color(0.6, 0.9, 0.5), "guard": Color(0.9, 0.85, 0.5)}.get(id, Color.WHITE)
+		var col: Color = {"poison": Color(0.6, 0.9, 0.3), "slow": Color(0.4, 0.6, 1), "root": Color(0.6, 0.9, 0.5), "guard": Color(0.9, 0.85, 0.5), "bleed": Color(0.8, 0.15, 0.15), "burn": Color(1.0, 0.5, 0.15)}.get(id, Color.WHITE)
 		draw_rect(Rect2(x, y - 6, 4, 4), col)
 		x += 6
 

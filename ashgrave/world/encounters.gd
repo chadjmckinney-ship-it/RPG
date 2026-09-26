@@ -19,23 +19,38 @@ static func camps_for_chunk(world: WorldGen, ch: Vector2i) -> Array:
 		if not world.village_near(c, VILLAGE_RADIUS).is_empty():
 			continue
 		var type := _type_for(world.terrain_at(c), rng)
-		var count := rng.randi_range(1, 2) if type == "risen" else rng.randi_range(1, 3)
+		var count := rng.randi_range(1, 2) if type in ["risen", "boar", "revenant"] else rng.randi_range(1, 3)
 		var cells: Array[Vector2i] = []
 		for k in count * 4:
 			var m := c + Vector2i(rng.randi_range(-2, 2), rng.randi_range(-2, 2))
 			if cells.size() < count and _open(world, m) and not cells.has(m) and Vector2(m - spawn).length() >= SAFE_RADIUS:
 				cells.append(m)
 		if not cells.is_empty():
-			out.append({"id": "%d:%d:%d" % [ch.x, ch.y, i], "type": type, "cells": cells})
+			# Some camps mix types: bandits bring crossbows, cultists raise the dead.
+			var types: Array = []
+			for k in cells.size():
+				types.append(MIXES[type][k % MIXES[type].size()] if MIXES.has(type) and k > 0 else type)
+			out.append({"id": "%d:%d:%d" % [ch.x, ch.y, i], "type": type, "cells": cells, "types": types})
 	return out
 
 static func _open(world: WorldGen, c: Vector2i) -> bool:
 	return world.walkable(c) and not world.has_tree(c)
 
+const MIXES := {"bandit": ["crossbow", "bandit"], "cultist": ["cultist", "risen"]}
+const BY_TERRAIN := {
+	WorldGen.Terrain.HILLS: [["risen", 0.6], ["revenant", 0.4]],
+	WorldGen.Terrain.FEN: [["lurker", 0.5], ["wight", 0.5]],
+	WorldGen.Terrain.FOREST: [["hound", 0.45], ["boar", 0.3], ["risen", 0.25]],
+	WorldGen.Terrain.ROAD: [["bandit", 0.6], ["cultist", 0.4]],
+	WorldGen.Terrain.MOOR: [["hound", 0.35], ["crows", 0.3], ["cultist", 0.35]],
+	WorldGen.Terrain.ASHFIELD: [["ghoul", 0.6], ["crows", 0.4]],
+}
+
 static func _type_for(t: int, rng: RandomNumberGenerator) -> String:
-	match t:
-		WorldGen.Terrain.HILLS: return "risen"
-		WorldGen.Terrain.FEN: return "lurker"
-		WorldGen.Terrain.FOREST: return "hound" if rng.randf() < 0.7 else "risen"
-		WorldGen.Terrain.ROAD: return "cultist"
-	return "hound" if rng.randf() < 0.5 else "cultist"
+	var table: Array = BY_TERRAIN.get(t, BY_TERRAIN[WorldGen.Terrain.MOOR])
+	var r := rng.randf()
+	for e in table:
+		r -= e[1]
+		if r <= 0.0:
+			return e[0]
+	return table[table.size() - 1][0]

@@ -3,7 +3,7 @@ extends RefCounted
 ## Seeded, pure-function world. Any cell's terrain depends only on (seed, cell),
 ## so chunks can be generated in any order and always agree at their borders.
 
-enum Terrain { WATER, MOOR, FOREST, FEN, HILLS, ROCK, ROAD }
+enum Terrain { WATER, MOOR, FOREST, FEN, HILLS, ROCK, ROAD, ASHFIELD }
 
 const CHUNK := 32
 const WORLD_CHUNKS := 16
@@ -12,6 +12,7 @@ const SIZE := CHUNK * WORLD_CHUNKS  # 512 x 512 cells
 const NAMES := {
 	Terrain.WATER: "Black water", Terrain.MOOR: "Moor", Terrain.FOREST: "Blackwood",
 	Terrain.FEN: "Fen", Terrain.HILLS: "Barrow hills", Terrain.ROCK: "Crag", Terrain.ROAD: "Old road",
+	Terrain.ASHFIELD: "Ashfield",
 }
 
 var seed_value: int
@@ -60,6 +61,9 @@ func terrain_at(c: Vector2i) -> int:
 		return Terrain.FEN
 	if m > 0.0:
 		return Terrain.FOREST
+	# Burnt country where the plague pyres were lit.
+	if m < -0.36 and h > -0.1:
+		return Terrain.ASHFIELD
 	return Terrain.MOOR
 
 var _villages: Array = []

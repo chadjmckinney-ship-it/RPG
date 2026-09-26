@@ -42,6 +42,16 @@ static func build(id: String, world: WorldGen) -> Dictionary:
 							"effects": ["take:tithe-ledger", "give:coin:150", "rep:companies:30", "rep:church:-10", "approve:oswin:-5", "approve:ketta:-5", "flag:ledger_companies"]},
 					]}},
 			], "reward": ["flag:act1_done"]}
+		"sq_ashen":
+			return {"id": id, "title": "The Ashen Knight", "giver": "harl", "stages": [
+				{"text": "Find the burnt watchtower %s of %s." % [compass(company.center, s.ashen), company.name],
+					"obj": {"type": "reach", "cell": vec(s.ashen), "radius": 5.0}, "target": vec(s.ashen), "on_done": ["spawn:ashen"]},
+				{"text": "Kill the Ashen Knight.", "obj": {"type": "kill_camp", "camp": "story:ashen"}, "target": vec(s.ashen)},
+				{"text": "Tell Captain Harl in %s the Knight is dead." % company.name, "target": vec(company.center),
+					"obj": {"type": "talk", "options": [{"npc": "harl", "label": "Your Ashen Knight is ash.",
+						"reply": "Sir Edric burned the plague villages on the Church's coin and kept burning after they stopped paying. Good riddance. Keep the sword; you've earned it.",
+						"effects": ["give:coin:100", "rep:companies:10", "approve:ketta:5"]}]}},
+			], "reward": []}
 		"cq_oswin":
 			return {"id": id, "title": "Oswin's Penance", "giver": "oswin", "stages": [
 				{"text": "Bring Oswin to the Chapel of Ash, %s of %s." % [compass(start.center, s.chapel), start.name],

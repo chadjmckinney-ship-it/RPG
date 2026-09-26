@@ -7,6 +7,7 @@ const KINDS := {
 	"herb": {"item": "bitterroot", "amount": [1, 3], "name": "Bitterroot patch"},
 	"ore": {"item": "iron-ore", "amount": [1, 2], "name": "Iron seam"},
 	"wood": {"item": "deadwood", "amount": [2, 3], "name": "Fallen deadwood"},
+	"ash": {"item": "ashbloom", "amount": [1, 2], "name": "Ashbloom"},
 }
 
 static func nodes_for_chunk(world: WorldGen, ch: Vector2i) -> Array:
@@ -22,6 +23,7 @@ static func nodes_for_chunk(world: WorldGen, ch: Vector2i) -> Array:
 			WorldGen.Terrain.HILLS: kind = "ore"
 			WorldGen.Terrain.FOREST: kind = "wood"
 			WorldGen.Terrain.FEN, WorldGen.Terrain.MOOR: kind = "herb"
+			WorldGen.Terrain.ASHFIELD: kind = "ash"
 		if kind != "":
 			out.append({"id": "g%d:%d:%d" % [ch.x, ch.y, i], "kind": kind, "cell": c})
 	return out

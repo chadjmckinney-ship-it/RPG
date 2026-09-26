@@ -22,6 +22,7 @@ static func setup(world: WorldGen) -> Dictionary:
 		"start": start.id, "hollow": hollow.id, "company": company.id,
 		"barrow": _find_site(world, start.center, 50, 140, [WorldGen.Terrain.HILLS]),
 		"chapel": _find_site(world, start.center, 28, 80, [WorldGen.Terrain.MOOR, WorldGen.Terrain.ROAD]),
+		"ashen": _find_site(world, company.center, 40, 160, [WorldGen.Terrain.ASHFIELD, WorldGen.Terrain.MOOR]),
 	}
 	_cache[world.seed_value] = s
 	return s

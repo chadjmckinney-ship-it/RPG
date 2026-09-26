@@ -106,6 +106,8 @@ func _ready() -> void:
 	Events.story_effect.connect(_on_story_effect)
 	if ScriptOps.check("stage:mq_dust:2"):
 		_spawn_barrow()
+	if ScriptOps.check("stage:sq_ashen:1"):
+		_spawn_boss("ashen")
 	log_msg("Maren Vey's company makes camp at the edge of the wilds.")
 
 func log_msg(text: String) -> void:
@@ -132,8 +134,8 @@ func _spawn_camps(ch: Vector2i) -> void:
 	for camp in Encounters.camps_for_chunk(world, ch):
 		if GameState.cleared_camps.has(camp.id):
 			continue
-		for cell in camp.cells:
-			list.append(spawn_creature(camp.type, cell, camp.id))
+		for k in camp.cells.size():
+			list.append(spawn_creature(camp.get("types", [])[k] if camp.has("types") else camp.type, camp.cells[k], camp.id))
 	camp_creatures[ch] = list
 
 func _despawn_camps(ch: Vector2i) -> void:
@@ -142,7 +144,8 @@ func _despawn_camps(ch: Vector2i) -> void:
 			c.queue_free()
 	camp_creatures.erase(ch)
 
-const KILL_REP := {"cultist": {"church": 2, "hollow": -3}, "risen": {"church": 1}}
+const KILL_REP := {"cultist": {"church": 2, "hollow": -3}, "risen": {"church": 1}, "revenant": {"church": 1},
+	"bandit": {"companies": 1, "church": 1}, "crossbow": {"companies": 1, "church": 1}}
 
 func _on_creature_died(c: Actor) -> void:
 	for f in KILL_REP.get(c.type_id, {}):
@@ -210,7 +213,7 @@ func _spawn_props(ch: Vector2i) -> void:
 			vil.tree_exiting.connect(func(): actors.erase(vil))
 			list.append(vil)
 	var story := Story.setup(world)
-	for kind in ["barrow", "chapel"]:
+	for kind in ["barrow", "chapel", "ashen"]:
 		var at: Vector2i = story[kind]
 		if streamer.chunk_of(at) == ch:
 			var lm := Landmark.new()
@@ -275,6 +278,8 @@ func _on_story_effect(effect: String) -> void:
 		"spawn":
 			if p[1] == "barrow":
 				_spawn_barrow()
+			else:
+				_spawn_boss(p[1])
 		"stat":
 			GameState.add_bonus(p[1], p[2], float(p[3]))
 			for m in party.members:
@@ -284,6 +289,17 @@ func _on_story_effect(effect: String) -> void:
 			log_msg("%s grows stronger (%s %+d)." % [Companions.DEFS[p[1]].name, p[2].replace("max_", "").to_upper(), int(p[3])])
 		"note":
 			panels.show_note(effect.substr(5))
+
+func _spawn_boss(site: String) -> void:
+	var at: Vector2i = Story.setup(world)[site]
+	var camp := "story:" + site
+	for a in actors:
+		if is_instance_valid(a) and a is Creature and a.camp_id == camp and a.alive():
+			return
+	if site == "ashen":
+		spawn_creature("ash_knight", party._free_near(at, {}), camp)
+		spawn_creature("ghoul", party._free_near(at + Vector2i(2, 1), {}), camp)
+		log_msg("A figure in blackened plate rises from the ashes of the tower.")
 
 func _spawn_barrow() -> void:
 	var at: Vector2i = Story.setup(world).barrow

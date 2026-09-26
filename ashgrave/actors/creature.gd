@@ -1,5 +1,11 @@
 class_name Creature
 extends Actor
+
+const HUMANS := {
+	"bandit": {"skin": Color("c89e7c"), "hair": Color("3a2a1e"), "coat": Color("4a3a2a"), "body": Color("6a4a32"), "trim": Color("8a7040"), "legs": Color("2a2420"), "hood": true},
+	"crossbow": {"skin": Color("b89070"), "hair": Color("2a2018"), "coat": Color("3e3a30"), "body": Color("5a4e3a"), "trim": Color("7a6a40"), "legs": Color("2a2420")},
+	"ash_knight": {"skin": Color("2a2624"), "hair": Color("1a1614"), "coat": Color("2e2a28"), "body": Color("4a4440"), "trim": Color("c85a20"), "legs": Color("201c1a"), "hood": true},
+}
 ## Hostile AI: wander near home, chase what it notices, keep a threat table,
 ## give up past its leash, and (for some) flee when badly hurt.
 
@@ -97,6 +103,13 @@ func _run_order(delta: float) -> void:
 		var t := _pick_target()
 		if t and t != current.target:
 			current.target = t
+	# Fight whoever is already in reach instead of walking off after someone else.
+	if current != null and current.type == "attack" and is_instance_valid(current.get("target")) \
+			and cell_distance(current.target.cell) > attack_range + 0.01 and ctx:
+		for other in ctx.actors:
+			if is_instance_valid(other) and other.alive() and other.faction == "party" and cell_distance(other.cell) <= attack_range + 0.01:
+				current.target = other
+				break
 	super._run_order(delta)
 
 func _on_damaged(source: Actor) -> void:
@@ -137,11 +150,48 @@ func _drop_loot() -> void:
 func _draw_body(bob: float) -> void:
 	var f := facing
 	var y := -bob
-	if type_id == "barrow_lord":
+	if type_id == "barrow_lord" or type_id == "ash_knight":
 		draw_set_transform(Vector2.ZERO, 0, Vector2(1.35, 1.35))
+	if HUMANS.has(type_id):
+		Figures.draw_person(self, HUMANS[type_id], f, bob, _walk_t, not path.is_empty(), ranged)
+		if type_id == "ash_knight":
+			draw_circle(Vector2(f * 2, y - 46), 2.0, Color(1.0, 0.4, 0.1))
+			draw_circle(Vector2(0, y - 24), 16, Color(1.0, 0.35, 0.1, 0.12))
+		return
 	match type_id:
-		"risen", "barrow_lord":
-			var bone := Color("c8c0a8")
+		"crows":
+			for i in 4:
+				var t := _walk_t * 6.0 + i * 1.7
+				var p := Vector2(sin(t) * 10.0 + (i - 1.5) * 6.0, y - 22.0 - cos(t * 1.3) * 8.0 - i * 3.0)
+				var wing := 5.0 + sin(t * 3.0) * 3.0
+				draw_line(p + Vector2(-wing, -2), p, Color("141414"), 2.0)
+				draw_line(p, p + Vector2(wing, -2), Color("141414"), 2.0)
+				draw_circle(p, 2.2, Color("1c1c1e"))
+		"wight", "ghoul":
+			var skin := Color("7a8a6a") if type_id == "wight" else Color("6a625a")
+			draw_rect(Rect2(-4, y - 12, 3, 12), skin.darkened(0.3))
+			draw_rect(Rect2(2, y - 12, 3, 12), skin.darkened(0.3))
+			draw_colored_polygon(PackedVector2Array([Vector2(-8, y - 30), Vector2(6, y - 34), Vector2(9, y - 12), Vector2(-8, y - 12)]), skin)
+			draw_line(Vector2(f * 6, y - 30), Vector2(f * 14, y - 16), skin, 3.0)
+			draw_line(Vector2(f * 14, y - 16), Vector2(f * 17, y - 13), Color("d8d0c0"), 1.5)
+			draw_circle(Vector2(f * 6, y - 36), 6.0, skin.lightened(0.1))
+			var eye := Color(0.6, 1.0, 0.7) if type_id == "wight" else Color(1.0, 0.45, 0.2)
+			draw_circle(Vector2(f * 8, y - 37), 1.3, eye)
+			if type_id == "wight":
+				for i in 3:
+					draw_line(Vector2(-6 + i * 5, y - 28), Vector2(-7 + i * 5, y - 10), Color(0.3, 0.4, 0.25, 0.8), 1.5)  # weeds
+		"boar":
+			var hide := Color("5a4030")
+			draw_colored_polygon(PackedVector2Array([Vector2(-16 * f, y - 20), Vector2(10 * f, y - 24), Vector2(16 * f, y - 10), Vector2(-16 * f, y - 8)]), hide)
+			for lx in [-12, -6, 6, 11]:
+				draw_rect(Rect2(lx * f - 1, y - 9, 3, 9), hide.darkened(0.35))
+			draw_circle(Vector2(15 * f, y - 16), 6.0, hide.lightened(0.08))
+			draw_line(Vector2(18 * f, y - 13), Vector2(22 * f, y - 19), Color("e8e0cc"), 2.0)
+			draw_circle(Vector2(16 * f, y - 19), 1.2, Color(1, 0.3, 0.2))
+			for i in 5:
+				draw_line(Vector2((-12 + i * 5) * f, y - 22), Vector2((-13 + i * 5) * f, y - 27), Color("2a1e16"), 1.5)
+		"risen", "barrow_lord", "revenant":
+			var bone := Color("c8c0a8") if type_id != "revenant" else Color("dfe6ea")
 			draw_rect(Rect2(-4, y - 14, 3, 14), bone.darkened(0.3))
 			draw_rect(Rect2(1, y - 14, 3, 14), bone.darkened(0.3))
 			draw_colored_polygon(PackedVector2Array([Vector2(-9, y - 40), Vector2(9, y - 40), Vector2(7, y - 14), Vector2(-7, y - 14)]), Color("3a3a34"))

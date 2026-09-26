@@ -37,6 +37,12 @@ func _draw() -> void:
 			if ok:
 				draw_line(Vector2(-6, -8), Vector2(2, -12), Color(0.75, 0.5, 0.35), 2.0)
 				draw_line(Vector2(0, -4), Vector2(7, -7), Color(0.75, 0.5, 0.35), 2.0)
+		"ash":
+			for i in 3:
+				draw_line(Vector2(-6 + i * 6, 0), Vector2(-6 + i * 6, -9 - i), Color(0.3, 0.28, 0.26, a), 2.0)
+			if ok:
+				draw_circle(Vector2(0, -12), 3.0, Color(0.85, 0.35, 0.2))
+				draw_circle(Vector2(-6, -9), 2.0, Color(0.9, 0.5, 0.25))
 		"wood":
 			draw_line(Vector2(-14, 0), Vector2(12, -6), Color(0.3, 0.22, 0.15, a), 6.0)
 			draw_line(Vector2(-8, 2), Vector2(14, 0), Color(0.25, 0.18, 0.12, a), 5.0)

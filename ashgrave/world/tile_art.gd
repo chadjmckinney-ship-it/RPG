@@ -15,6 +15,7 @@ const GROUND := {
 	WorldGen.Terrain.HILLS: [Color("6b6450"), Color("7a725b")],
 	WorldGen.Terrain.ROCK: [Color("4a4848"), Color("5c5a58")],
 	WorldGen.Terrain.ROAD: [Color("7d6b52"), Color("8e7b60")],
+	WorldGen.Terrain.ASHFIELD: [Color("4a4642"), Color("3a3634")],
 }
 
 static func _in_diamond(x: int, y: int) -> bool:

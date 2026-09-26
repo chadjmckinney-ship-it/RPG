@@ -12,17 +12,20 @@ const DEFS := {
 	"bitterroot": {"name": "Bitterroot", "type": "material", "value": 2},
 	"iron-ore": {"name": "Iron ore", "type": "material", "value": 4},
 	"deadwood": {"name": "Deadwood", "type": "material", "value": 2},
+	"ashbloom": {"name": "Ashbloom", "type": "material", "value": 6},
 
 	"tithe-ledger": {"name": "Tithe Ledger", "type": "key", "value": 0, "desc": "A Church burial ledger, salt-stained, recovered from the Drowned Barrow."},
 	"sealed-letter": {"name": "Sealed letter", "type": "key", "value": 0, "desc": "Wax-sealed. Not yours to open."},
 
 	"bandage": {"name": "Bandage", "type": "consumable", "value": 6, "heal": 30.0, "desc": "Heals 30."},
 	"antivenom": {"name": "Antivenom", "type": "consumable", "value": 10, "cure": ["poison"], "heal": 5.0, "desc": "Cures poison."},
+	"blight-draught": {"name": "Blight draught", "type": "consumable", "value": 24, "heal": 50.0, "cure": ["poison", "bleed", "burn"], "desc": "Heals 50, cures poison, bleeding and burns."},
 	"fen-tonic": {"name": "Fen tonic", "type": "consumable", "value": 18, "heal": 65.0, "desc": "Heals 65."},
 
 	"militia-spear": {"name": "Militia spear", "type": "gear", "slot": "weapon", "style": "melee", "value": 30, "bonus": {"attack": 3.0}},
 	"iron-blade": {"name": "Iron blade", "type": "gear", "slot": "weapon", "style": "melee", "value": 45, "bonus": {"attack": 4.0}},
 	"barrow-blade": {"name": "Barrow blade", "type": "gear", "slot": "weapon", "style": "melee", "value": 90, "bonus": {"attack": 7.0}},
+	"ashen-greatsword": {"name": "Ashen greatsword", "type": "gear", "slot": "weapon", "style": "melee", "value": 160, "bonus": {"attack": 10.0, "defense": 1.0}},
 	"yew-bow": {"name": "Yew bow", "type": "gear", "slot": "weapon", "style": "ranged", "value": 40, "bonus": {"attack": 4.0}},
 	"hide-jerkin": {"name": "Hide jerkin", "type": "gear", "slot": "armor", "value": 25, "bonus": {"defense": 2.0, "max_hp": 10.0}},
 	"iron-mail": {"name": "Iron mail", "type": "gear", "slot": "armor", "value": 80, "bonus": {"defense": 5.0, "speed": -12.0}},

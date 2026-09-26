@@ -2,7 +2,7 @@ class_name PartyMember
 extends Actor
 ## A controllable party member: placeholder figure plus auto-retaliation when idle.
 
-const AUTO_ENGAGE_RANGE := 5.0
+const AUTO_ENGAGE_RANGE := 10.0  # join any fight this close (only creatures already fighting)
 
 @export var role := ""
 var companion_id := ""
@@ -85,6 +85,24 @@ func _idle(_delta: float) -> void:
 			best = other
 	if best:
 		issue({"type": "attack", "target": best, "auto": true})
+
+var _kite_cd := 0.0
+
+## Archers step back when something with teeth gets close, then resume shooting.
+func _run_order(delta: float) -> void:
+	_kite_cd -= delta
+	if ranged and _kite_cd <= 0.0 and current != null and current.type == "attack" and ctx:
+		for other in ctx.actors:
+			if is_instance_valid(other) and other.alive() and is_hostile_to(other) and not other.ranged and cell_distance(other.cell) <= 1.6:
+				var away := cell + Vector2i(signi(cell.x - other.cell.x) * 3, signi(cell.y - other.cell.y) * 3)
+				if world.walkable(away) and not world.has_tree(away):
+					_kite_cd = 5.0
+					orders.push_front(current)
+					current = null
+					_begin({"type": "move", "cell": away})
+					return
+				break
+	super._run_order(delta)
 
 func _on_damaged(source: Actor) -> void:
 	if current == null and orders.is_empty() and source and source.alive():

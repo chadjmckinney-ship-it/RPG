@@ -45,6 +45,11 @@ func root() -> Dictionary:
 	# Quest turn-ins and decisions come first.
 	for q in QuestLog.talk_options(npc.npc_id):
 		choices.append({"label": "[%s] %s" % [q.title, q.opt.label], "enabled": q.ok, "action": _quest_action.bind(q.quest, q.opt)})
+	if npc.npc_id == "harl" and not GameState.quests.has("sq_ashen"):
+		var pitch := _say("There's a knight in the ashfields who never stopped burning villages. Company contract, twenty years stale. He's still collecting. End him and there's a hundred coin in it.", [
+			{"label": "Consider it done.", "effects": ["quest_start:sq_ashen"], "next": "end"},
+			{"label": "Not now.", "next": "root"}])
+		choices.append({"label": "Any work for a deserter, Captain?", "next": pitch})
 	match npc.job:
 		"elder": choices.append_array(_maud_choices())
 		"companion": choices.append_array(_companion_choices())

@@ -6,6 +6,7 @@ const RECIPES := {
 	"bandage": {"station": "camp", "in": {"bitterroot": 2}, "out": 2},
 	"antivenom": {"station": "camp", "in": {"lurker-gland": 1, "bitterroot": 1}, "out": 1},
 	"fen-tonic": {"station": "camp", "in": {"bitterroot": 3, "grave-dust": 1}, "out": 1},
+	"blight-draught": {"station": "camp", "in": {"ashbloom": 2, "lurker-gland": 1}, "out": 1},
 	"hide-jerkin": {"station": "camp", "in": {"hide": 4}, "out": 1},
 	"yew-bow": {"station": "camp", "in": {"deadwood": 3, "hide": 1}, "out": 1},
 	"iron-blade": {"station": "forge", "in": {"iron-ore": 3, "deadwood": 1}, "out": 1},
