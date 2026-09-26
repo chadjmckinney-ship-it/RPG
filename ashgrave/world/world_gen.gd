@@ -83,7 +83,14 @@ func has_tree(c: Vector2i) -> bool:
 	var r := _hash01(c)
 	return r < (0.28 if t == Terrain.FOREST else 0.06)
 
+var _spawn := Vector2i(-1, -1)
+
 func spawn_cell() -> Vector2i:
+	if _spawn.x < 0:
+		_spawn = _find_spawn()
+	return _spawn
+
+func _find_spawn() -> Vector2i:
 	var center := Vector2i(SIZE / 2, SIZE / 2)
 	for radius in range(0, SIZE / 2):
 		for dx in range(-radius, radius + 1):

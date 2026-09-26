@@ -31,8 +31,11 @@ func ensure_covers(center: Vector2i) -> void:
 			else:
 				grid.set_point_weight_scale(c, world.cost(c))
 
+## Paths only inside the current window (kept centred on the party leader by main.gd).
+## Callers far outside it fall back to greedy steering.
 func find_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
-	ensure_covers(from)
-	if not grid.region.has_point(to) or grid.is_point_solid(to):
+	if grid.region.size == Vector2i.ZERO:
+		ensure_covers(from)
+	if not grid.region.has_point(from) or not grid.region.has_point(to) or grid.is_point_solid(to):
 		return []
 	return grid.get_id_path(from, to)

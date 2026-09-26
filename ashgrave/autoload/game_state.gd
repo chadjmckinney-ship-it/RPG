@@ -3,6 +3,8 @@ extends Node
 
 var world_seed: int = 1337
 var world: WorldGen
+var loot := {}            # placeholder stash until inventory (M3)
+var cleared_camps := {}   # camp id -> true; stays cleared this session
 
 func new_world(seed_value: int = -1) -> void:
 	world_seed = seed_value if seed_value >= 0 else randi() % 1_000_000

@@ -1,5 +1,8 @@
 class_name ChunkStreamer
 extends Node2D
+
+signal chunk_loaded(ch: Vector2i)
+signal chunk_unloaded(ch: Vector2i)
 ## Streams 32x32-cell chunks of ground and trees around a focus point.
 ## Loads a few chunks per frame to avoid hitches; unloads chunks out of range.
 
@@ -65,6 +68,7 @@ func load_chunk(ch: Vector2i) -> void:
 			if world.has_tree(c):
 				trees.set_cell(c, 0, Vector2i((c.x + c.y) & 1, 0))
 	loaded[ch] = true
+	chunk_loaded.emit(ch)
 
 func unload_chunk(ch: Vector2i) -> void:
 	var base := ch * WorldGen.CHUNK
@@ -74,3 +78,4 @@ func unload_chunk(ch: Vector2i) -> void:
 			ground.erase_cell(c)
 			trees.erase_cell(c)
 	loaded.erase(ch)
+	chunk_unloaded.emit(ch)

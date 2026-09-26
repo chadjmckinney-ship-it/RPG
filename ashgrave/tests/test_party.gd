@@ -3,6 +3,7 @@ extends TestCase
 
 func test_main_scene_boots_and_moves_party() -> void:
 	var main: Node = load("res://main.tscn").instantiate()
+	main.spawn_encounters = false
 	tree.root.add_child(main)
 	await tree.process_frame
 	check(main.party.members.size() == 3, "expected 3 party members")
@@ -51,7 +52,7 @@ func test_main_scene_boots_and_moves_party() -> void:
 		await tree.create_timer(0.1).timeout
 		if not main.party.members.any(func(m): return m.is_moving()):
 			break
-	check(lead.cell == target, "leader ended at %s, wanted %s" % [lead.cell, target])
+	check(lead.cell == target, "leader ended at %s, wanted %s; paused=%s log=%s" % [lead.cell, target, TacticalPause.paused, main.combat_log.lines])
 	var cells := {}
 	for m in main.party.members:
 		cells[m.cell] = true
