@@ -1,110 +1,86 @@
 class_name TileArt
 extends RefCounted
-## Placeholder art painted at runtime: isometric ground diamonds and trees.
-## Swap for real sprite sheets later by replacing build_ground_set/build_tree_set.
+## World art from tools/import_world.py (Eliza Wyatt's revised LPC set).
+## The ground is painted by GroundRenderer; this builds the prop tile set (trees, rocks,
+## plants, village clutter) and a transparent ground set that only serves map maths.
 
-const TW := 64   # authoring size; images are scaled up to WorldGen.TILE_W x TILE_H
-const TH := 32
-const VARIANTS := 3
+const SCALE := 2          # art is authored at 1x and drawn at 2x with nearest filtering
+const JITTER := [Vector2i(0, 0), Vector2i(-18, 4), Vector2i(16, -6)]   # screen px, per alternative
 
-const GROUND := {
-	WorldGen.Terrain.WATER: [Color("1c2a36"), Color("24384a")],
-	WorldGen.Terrain.MOOR: [Color("5d5a3c"), Color("6e6a46")],
-	WorldGen.Terrain.FOREST: [Color("2c3a26"), Color("35462d")],
-	WorldGen.Terrain.FEN: [Color("3a4a3a"), Color("2d3d38")],
-	WorldGen.Terrain.HILLS: [Color("6b6450"), Color("7a725b")],
-	WorldGen.Terrain.ROCK: [Color("4a4848"), Color("5c5a58")],
-	WorldGen.Terrain.ROAD: [Color("7d6b52"), Color("8e7b60")],
-	WorldGen.Terrain.ASHFIELD: [Color("4a4642"), Color("3a3634")],
-}
+static var _props: Dictionary = {}
 
-static func _in_diamond(x: int, y: int) -> bool:
-	return absf(x - TW / 2.0 + 0.5) / (TW / 2.0) + absf(y - TH / 2.0 + 0.5) / (TH / 2.0) <= 1.0
+static func props() -> Dictionary:
+	if _props.is_empty():
+		_props = JSON.parse_string(FileAccess.get_file_as_string("res://art/world/props.json"))
+	return _props
 
-## Atlas column = terrain, row = variant.
+static var _upscaled := {}
+
+## The texture at SCALE x (cached: get_image() can hand back the texture's own image, so copy it).
+static func upscaled(path: String) -> ImageTexture:
+	if not _upscaled.has(path):
+		var img: Image = load(path).get_image().duplicate()
+		img.decompress()
+		img.resize(img.get_width() * SCALE, img.get_height() * SCALE, Image.INTERPOLATE_NEAREST)
+		_upscaled[path] = ImageTexture.create_from_image(img)
+	return _upscaled[path]
+
+## Invisible 1-tile set: the Ground layer stays for map_to_local / local_to_map and tests.
 static func build_ground_set() -> TileSet:
-	var terrains := GROUND.keys()
-	var img := Image.create(TW * terrains.size(), TH * VARIANTS, false, Image.FORMAT_RGBA8)
-	var rng := RandomNumberGenerator.new()
-	for ti in terrains.size():
-		var cols: Array = GROUND[terrains[ti]]
-		for v in VARIANTS:
-			rng.seed = ti * 31 + v
-			for y in TH:
-				for x in TW:
-					if not _in_diamond(x, y):
-						continue
-					var c: Color = cols[0]
-					var r := rng.randf()
-					if r < 0.18:
-						c = cols[1]
-					elif r < 0.24:
-						c = cols[0].darkened(0.15)
-					# Soft edge shading gives the diamonds some volume.
-					if y > TH * 0.5 + absf(x - TW * 0.5) * 0.5 - 2:
-						c = c.darkened(0.12)
-					img.set_pixel(ti * TW + x, v * TH + y, c)
-	var k := int(WorldGen.PX)
-	img.resize(img.get_width() * k, img.get_height() * k, Image.INTERPOLATE_NEAREST)
-	var ts := TileSet.new()
-	ts.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
-	ts.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
-	ts.tile_size = Vector2i(WorldGen.TILE_W, WorldGen.TILE_H)
+	var ts := _iso_set()
 	var src := TileSetAtlasSource.new()
-	src.texture = ImageTexture.create_from_image(img)
+	src.texture = ImageTexture.create_from_image(Image.create(WorldGen.TILE_W, WorldGen.TILE_H, false, Image.FORMAT_RGBA8))
 	src.texture_region_size = Vector2i(WorldGen.TILE_W, WorldGen.TILE_H)
-	for ti in terrains.size():
-		for v in VARIANTS:
-			src.create_tile(Vector2i(ti, v))
+	src.create_tile(Vector2i.ZERO)
 	ts.add_source(src, 0)
 	return ts
 
-static func ground_coords(terrain: int, variant: int) -> Vector2i:
-	return Vector2i(GROUND.keys().find(terrain), variant % VARIANTS)
+static func ground_coords(_terrain: int, _variant: int) -> Vector2i:
+	return Vector2i.ZERO
 
-## Dead, leaning blackwood trees. Tile is taller than a cell; origin sits at the trunk base.
-static func build_tree_set() -> TileSet:
-	var w := 64
-	var h := 96
-	var img := Image.create(w * 2, h, false, Image.FORMAT_RGBA8)
-	var rng := RandomNumberGenerator.new()
-	for k in 2:
-		rng.seed = 900 + k
-		var ox := k * w
-		# shadow
-		for y in range(84, 92):
-			for x in range(14, 50):
-				if pow((x - 32) / 18.0, 2) + pow((y - 88) / 4.0, 2) <= 1.0:
-					img.set_pixel(ox + x, y, Color(0, 0, 0, 0.35))
-		# trunk
-		for y in range(40, 90):
-			var lean := int((90 - y) * (0.08 if k == 0 else -0.06))
-			for x in range(29, 35):
-				img.set_pixel(ox + x + lean, y, Color("2a2119") if x < 32 else Color("3a2e22"))
-		# canopy: clustered dark blobs
-		var canopy := [Color("1b2618"), Color("243320"), Color("2e3f27")]
-		for i in 26:
-			var cx := 32 + rng.randi_range(-18, 18)
-			var cy := 30 + rng.randi_range(-22, 16)
-			var r := rng.randi_range(6, 11)
-			var col: Color = canopy[i % 3]
-			for y in range(cy - r, cy + r):
-				for x in range(cx - r, cx + r):
-					if x >= 0 and x < w and y >= 0 and y < h and pow(x - cx, 2) + pow(y - cy, 2) <= r * r:
-						img.set_pixel(ox + x, y, col)
-	var px := int(WorldGen.PX)
-	img.resize(img.get_width() * px, img.get_height() * px, Image.INTERPOLATE_NEAREST)
+## Every prop becomes one atlas tile anchored at its foot, plus jittered alternatives.
+static func build_prop_set() -> TileSet:
+	var ts := _iso_set()
+	var src := TileSetAtlasSource.new()
+	var grid: int = props().grid
+	src.texture = upscaled("res://art/world/props.png")
+	src.texture_region_size = Vector2i(grid * SCALE, grid * SCALE)
+	var items: Dictionary = props().props
+	for name in items:
+		var r: Array = items[name]
+		var coords := Vector2i(int(r[0]) / grid, int(r[1]) / grid)
+		src.create_tile(coords, Vector2i(int(r[2]) / grid, int(r[3]) / grid))
+		# The tile's centre is drawn on the cell centre; shift so the foot lands there instead.
+		var origin := Vector2i((int(r[4]) - int(r[2]) / 2) * SCALE, (int(r[5]) - int(r[3]) / 2) * SCALE)
+		for i in JITTER.size():
+			var alt := 0 if i == 0 else src.create_alternative_tile(coords)
+			var data := src.get_tile_data(coords, alt)
+			data.texture_origin = origin - JITTER[i]
+			data.y_sort_origin = JITTER[i].y
+	ts.add_source(src, 0)
+	return ts
+
+static func prop_coords(name: String) -> Vector2i:
+	var r: Array = props().props[name]
+	var grid: int = props().grid
+	return Vector2i(int(r[0]) / grid, int(r[1]) / grid)
+
+## An AtlasTexture for one prop at 1x (for Sprite2D users such as gather nodes).
+static func prop_texture(name: String) -> AtlasTexture:
+	var r: Array = props().props[name]
+	var t := AtlasTexture.new()
+	t.atlas = load("res://art/world/props.png")
+	t.region = Rect2(r[0], r[1], r[2], r[3])
+	return t
+
+## Foot position inside prop_texture(name), at 1x.
+static func prop_foot(name: String) -> Vector2:
+	var r: Array = props().props[name]
+	return Vector2(r[4], r[5])
+
+static func _iso_set() -> TileSet:
 	var ts := TileSet.new()
 	ts.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
 	ts.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
 	ts.tile_size = Vector2i(WorldGen.TILE_W, WorldGen.TILE_H)
-	var src := TileSetAtlasSource.new()
-	src.texture = ImageTexture.create_from_image(img)
-	src.texture_region_size = Vector2i(w * px, h * px)
-	for k in 2:
-		src.create_tile(Vector2i(k, 0))
-		var data := src.get_tile_data(Vector2i(k, 0), 0)
-		data.texture_origin = Vector2i(0, 32 * px)  # lift so trunk base sits on the cell centre
-		data.y_sort_origin = 0
-	ts.add_source(src, 0)
 	return ts

@@ -11,16 +11,18 @@ const LOADS_PER_FRAME := 2
 
 var world: WorldGen
 var ground: TileMapLayer
-var trees: TileMapLayer
+var trees: TileMapLayer         # trees, rocks, plants and village clutter
+var painter: GroundRenderer
 var loaded := {}           # Vector2i chunk -> true
 var focus_cell := Vector2i.ZERO
 
-func setup(w: WorldGen, ground_layer: TileMapLayer, tree_layer: TileMapLayer) -> void:
+func setup(w: WorldGen, ground_layer: TileMapLayer, tree_layer: TileMapLayer, ground_painter: GroundRenderer) -> void:
 	world = w
 	ground = ground_layer
 	trees = tree_layer
+	painter = ground_painter
 	ground.tile_set = TileArt.build_ground_set()
-	trees.tile_set = TileArt.build_tree_set()
+	trees.tile_set = TileArt.build_prop_set()
 
 func chunk_of(cell: Vector2i) -> Vector2i:
 	return Vector2i(floori(cell.x / float(WorldGen.CHUNK)), floori(cell.y / float(WorldGen.CHUNK)))
@@ -64,9 +66,11 @@ func load_chunk(ch: Vector2i) -> void:
 		for x in WorldGen.CHUNK:
 			var c := base + Vector2i(x, y)
 			var t := world.terrain_at(c)
-			ground.set_cell(c, 0, TileArt.ground_coords(t, (c.x * 7 + c.y * 13) & 0xff))
-			if world.has_tree(c):
-				trees.set_cell(c, 0, Vector2i((c.x + c.y) & 1, 0))
+			ground.set_cell(c, 0, TileArt.ground_coords(t, 0))
+			painter.set_terrain(c, t)
+			var prop := world.prop_at(c)
+			if prop != "":
+				trees.set_cell(c, 0, TileArt.prop_coords(prop), (c.x * 5 + c.y * 3) % TileArt.JITTER.size())
 	loaded[ch] = true
 	chunk_loaded.emit(ch)
 

@@ -73,6 +73,7 @@ func terrain_at(c: Vector2i) -> int:
 
 var _villages: Array = []
 var _structures := {}
+var _clutter := {}
 var _villages_ready := false
 
 ## Settlements are generated lazily from the terrain, then block their building cells.
@@ -81,6 +82,7 @@ func villages() -> Array:
 		_villages_ready = true
 		_villages = Settlements.generate(self)
 		_structures = Settlements.structure_cells(_villages)
+		_clutter = Settlements.clutter_cells(_villages)
 	return _villages
 
 func structure_at(c: Vector2i) -> Dictionary:
@@ -117,6 +119,49 @@ func has_tree(c: Vector2i) -> bool:
 		return false
 	var r := _hash01(c)
 	return r < (0.28 if t == Terrain.FOREST else 0.06)
+
+const TREES := {
+	Terrain.FOREST: ["oak_a", "oak_b", "oak_c", "pine_a", "pine_b", "pine_c", "pine_d", "oak_a", "pine_b", "dead_tree"],
+	Terrain.FEN: ["dead_tree", "dead_tree", "pine_c"],
+}
+## Decoration per terrain: [chance per cell, [names...]]. Purely visual and never blocking.
+const DECOR := {
+	Terrain.MOOR: [0.07, ["grass_tuft", "grass_tuft_b", "bush", "flower_w", "leafy", "rock_small", "stump"]],
+	Terrain.FOREST: [0.16, ["fern", "fern_big", "shrub", "mushroom_red", "mushroom_brown", "mushrooms", "leafy_b", "stump", "bush"]],
+	Terrain.FEN: [0.18, ["reeds", "reeds_b", "cattail", "grass_tuft_b", "fern", "reeds"]],
+	Terrain.HILLS: [0.1, ["rock_small", "rock_small_b", "pebbles", "grass_tuft", "boulder_low"]],
+	Terrain.ROCK: [0.45, ["boulder_big", "boulder_tall", "boulder_round", "boulder_low", "rock_small"]],
+	Terrain.ASHFIELD: [0.07, ["charred_stump", "charred_stump", "pebbles", "rock_small"]],
+	Terrain.WATER: [0.03, ["lily", "lily"]],
+}
+
+## The art drawn on a cell by the prop layer: a tree, village clutter, decoration or "".
+func prop_at(c: Vector2i) -> String:
+	if has_tree(c):
+		var list: Array = TREES[terrain_at(c)]
+		return list[int(_hash01(c + Vector2i(911, 0)) * list.size()) % list.size()]
+	villages()
+	if _clutter.has(c):
+		return _clutter[c]
+	var t := terrain_at(c)
+	if not DECOR.has(t) or not structure_at(c).is_empty():
+		return ""
+	if t == Terrain.WATER and not _near_land(c):
+		return ""
+	var d: Array = DECOR[t]
+	var r := _hash01(c + Vector2i(0, 577))
+	if r >= d[0]:
+		return ""
+	if t != Terrain.ROCK and not village_near(c, Settlements.CLEAR_RADIUS).is_empty():
+		return ""
+	var names: Array = d[1]
+	return names[int(r / d[0] * names.size()) % names.size()]
+
+func _near_land(c: Vector2i) -> bool:
+	for o in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		if terrain_at(c + o) != Terrain.WATER:
+			return true
+	return false
 
 var _spawn := Vector2i(-1, -1)
 

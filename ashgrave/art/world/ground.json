@@ -1,0 +1,22 @@
+{
+ "order": [
+  "water",
+  "moor",
+  "forest",
+  "fen",
+  "hills",
+  "rock",
+  "road",
+  "ashfield"
+ ],
+ "colors": {
+  "water": "#223c44",
+  "moor": "#776c47",
+  "forest": "#2a3f25",
+  "fen": "#253b28",
+  "hills": "#5f6a4d",
+  "rock": "#3a3839",
+  "road": "#6e5f4d",
+  "ashfield": "#423e3b"
+ }
+}

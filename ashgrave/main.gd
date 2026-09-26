@@ -9,6 +9,8 @@ var streamer: ChunkStreamer
 var ground: TileMapLayer
 var trees: TileMapLayer
 var ysorted: Node2D
+var ground_painter: GroundRenderer
+var fade_materials: Array[ShaderMaterial] = []
 var party: PartyController
 var pathfinder: Pathfinder
 var camera: Camera2D
@@ -38,8 +40,14 @@ func _ready() -> void:
 	Events.combat_message.connect(combat_log.add)
 	Events.enemy_spotted.connect(_on_enemy_spotted)
 
+	ground_painter = GroundRenderer.new()
+	ground_painter.name = "GroundPainter"
+	add_child(ground_painter)
+	ground_painter.setup(world)
+	# The Ground layer only provides map maths now; the painter draws the terrain.
 	ground = TileMapLayer.new()
 	ground.name = "Ground"
+	ground.visible = false
 	add_child(ground)
 	# Trees and actors share one y-sorted parent so people walk behind trunks.
 	ysorted = Node2D.new()
@@ -49,6 +57,8 @@ func _ready() -> void:
 	trees = TileMapLayer.new()
 	trees.name = "Trees"
 	trees.y_sort_enabled = true
+	trees.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	trees.material = fade_material(false)
 	ysorted.add_child(trees)
 	streamer = ChunkStreamer.new()
 	streamer.name = "Streamer"
@@ -57,7 +67,7 @@ func _ready() -> void:
 	streamer.chunk_unloaded.connect(_despawn_camps)
 	streamer.chunk_loaded.connect(_spawn_props)
 	streamer.chunk_unloaded.connect(_despawn_props)
-	streamer.setup(world, ground, trees)
+	streamer.setup(world, ground, trees, ground_painter)
 	fx = Fx.new()
 	fx.z_index = 5
 	add_child(fx)
@@ -185,8 +195,8 @@ func _spawn_props(ch: Vector2i) -> void:
 			var st := Structure.new()
 			st.kind = kind
 			st.village = v
-			var a := Settlements.building_cell(v, kind)
-			st.position = ground.map_to_local(a + Vector2i(1, 1)) + Vector2(0, 16)
+			st.position = ground.map_to_local(Settlements.front_cell(v, kind)) - Vector2(0, Structure.SORT_LIFT)
+			st.fade = fade_material(true)
 			ysorted.add_child(st)
 			list.append(st)
 		var specials := Story.special_npcs(world)
@@ -220,6 +230,7 @@ func _spawn_props(ch: Vector2i) -> void:
 		if streamer.chunk_of(at) == ch:
 			var lm := Landmark.new()
 			lm.kind = kind
+			lm.fade = fade_material(true)
 			lm.position = ground.map_to_local(at)
 			ysorted.add_child(lm)
 			list.append(lm)
@@ -373,11 +384,35 @@ func load_game() -> void:
 
 # ---------------------------------------------------------------- loop
 
+## Shared see-through materials for things party members can stand behind.
+## per_sprite: only fade when the sprite's origin is in front of (below) the member.
+func fade_material(per_sprite: bool) -> ShaderMaterial:
+	for m in fade_materials:
+		if (m.get_shader_parameter("front_y") >= 0.0) == per_sprite:
+			return m
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://world/occlusion_fade.gdshader")
+	mat.set_shader_parameter("front_y", 0.0 if per_sprite else -1.0)
+	fade_materials.append(mat)
+	return mat
+
+func _update_fade() -> void:
+	var feet := PackedVector2Array()
+	for m in party.members:
+		if m.alive() and feet.size() < 4:
+			feet.append(m.position)
+	while feet.size() < 4:
+		feet.append(Vector2(-1e6, -1e6))
+	for mat in fade_materials:
+		mat.set_shader_parameter("members", feet)
+		mat.set_shader_parameter("member_count", 4)
+
 func _process(delta: float) -> void:
 	var lead := party.leader()
 	camera.position = lead.position if not _panning() else camera.position + _pan_vector() * 600.0 * delta / camera.zoom.x
 	streamer.focus_cell = ground.local_to_map(camera.position)
 	pathfinder.ensure_covers(lead.cell)
+	_update_fade()
 	shade.color = TimeOfDay.tint()
 	if TacticalPause.paused:
 		return
