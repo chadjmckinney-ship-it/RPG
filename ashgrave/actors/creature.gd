@@ -33,7 +33,7 @@ func setup(type: String, at: Vector2i) -> void:
 	place_at(at)
 	home = at
 	set_sprite(ArtMap.make_creature(type))
-	bar_height = {"crows": 60.0, "hound": 80.0, "lurker": 70.0, "boar": 90.0, "barrow_lord": 170.0, "ash_knight": 150.0}.get(type, 118.0)
+	bar_height = {"crows": 104.0, "boar": 128.0, "barrow_lord": 150.0, "ash_knight": 140.0}.get(type, 118.0)
 	_wander_t = randf_range(1.0, 4.0)
 
 ## True while fighting (used by party auto-engage and auto-pause).

@@ -151,6 +151,42 @@
   "keeper": {
    "body": "female",
    "weapon": ""
+  },
+  "risen": {
+   "body": "male",
+   "weapon": "longsword"
+  },
+  "revenant": {
+   "body": "male",
+   "weapon": "staff"
+  },
+  "barrow_lord": {
+   "body": "male",
+   "weapon": "longsword"
+  },
+  "ghoul": {
+   "body": "male",
+   "weapon": ""
+  },
+  "wight": {
+   "body": "male",
+   "weapon": ""
+  },
+  "hound": {
+   "body": "male",
+   "weapon": ""
+  },
+  "lurker": {
+   "body": "male",
+   "weapon": "spear"
+  },
+  "boar": {
+   "body": "male",
+   "weapon": "mace"
+  },
+  "crows": {
+   "body": "male",
+   "weapon": "dagger"
   }
  },
  "weapons": {

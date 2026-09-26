@@ -3,15 +3,15 @@ extends RefCounted
 ## Which art each character and creature uses.
 
 const CREATURES := {
-	"risen": {"flare": "skeleton"},
-	"revenant": {"flare": "skeleton_mage", "tint": Color(0.8, 0.95, 1.1)},
-	"barrow_lord": {"flare": "skeleton_knight_boss", "tint": Color(0.75, 0.95, 0.95), "size": 1.15},
-	"ghoul": {"flare": "zombie", "tint": Color(0.8, 0.78, 0.75)},
-	"wight": {"flare": "zombie_dark", "tint": Color(0.75, 1.0, 0.8)},
-	"hound": {"flare": "goblin_runner"},
-	"lurker": {"flare": "ice_ant", "tint": Color(0.7, 1.0, 0.7)},
-	"boar": {"flare": "antlion"},
-	"crows": {"flare": "antlion_small"},
+	"risen": {"lpc": "risen", "weapon": "longsword"},
+	"revenant": {"lpc": "revenant", "weapon": "staff", "tint": Color(0.85, 0.95, 1.1)},
+	"barrow_lord": {"lpc": "barrow_lord", "weapon": "longsword", "tint": Color(0.8, 1.0, 1.0), "size": 1.3},
+	"ghoul": {"lpc": "ghoul", "weapon": ""},
+	"wight": {"lpc": "wight", "weapon": ""},
+	"hound": {"lpc": "hound", "weapon": ""},
+	"lurker": {"lpc": "lurker", "weapon": "spear"},
+	"boar": {"lpc": "boar", "weapon": "mace", "size": 1.1},
+	"crows": {"lpc": "crows", "weapon": "dagger", "size": 0.85},
 	"bandit": {"lpc": "bandit", "weapon": "dagger"},
 	"crossbow": {"lpc": "crossbow", "weapon": "crossbow"},
 	"cultist": {"lpc": "cultist", "weapon": "staff"},
@@ -23,14 +23,11 @@ const ARMOR_ART := {"hide-jerkin": "_hide", "iron-mail": "_mail", "penitent-robe
 
 static func make_creature(type: String) -> CharSprite:
 	var a: Dictionary = CREATURES.get(type, CREATURES.risen)
-	if a.has("lpc"):
-		var s := LpcSprite.new()
-		s.setup(a.lpc, a.get("weapon", ""))
-		s.scale = Vector2.ONE * a.get("size", 1.0)
-		return s
-	var f := FlareSprite.new()
-	f.setup(a.flare, a.get("tint", Color.WHITE), a.get("size", 1.0))
-	return f
+	var s := LpcSprite.new()
+	s.setup(a.lpc, a.get("weapon", ""))
+	s.scale = Vector2.ONE * a.get("size", 1.0)
+	s.self_modulate = a.get("tint", Color.WHITE)
+	return s
 
 ## LPC look for a party member given their equipment.
 static func member_look(id: String, equipment: Dictionary) -> Array:

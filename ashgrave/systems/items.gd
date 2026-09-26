@@ -7,7 +7,7 @@ const DEFS := {
 	"coin": {"name": "Coin", "type": "currency", "value": 1},
 	"hide": {"name": "Tough hide", "type": "material", "value": 3},
 	"grave-dust": {"name": "Grave dust", "type": "material", "value": 4},
-	"lurker-gland": {"name": "Crawler venom sac", "type": "material", "value": 5},
+	"lurker-gland": {"name": "Lurker gland", "type": "material", "value": 5},
 	"bone-charm": {"name": "Bone charm", "type": "material", "value": 8},
 	"bitterroot": {"name": "Bitterroot", "type": "material", "value": 2},
 	"iron-ore": {"name": "Iron ore", "type": "material", "value": 4},

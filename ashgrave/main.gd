@@ -127,21 +127,10 @@ func spawn_creature(type: String, at: Vector2i, camp_id := "") -> Creature:
 	c.tree_exiting.connect(func(): actors.erase(c))
 	return c
 
-var chunk_graves := {}            # chunk -> Array[Node] (grave props at risen camps)
-
 func _spawn_camps(ch: Vector2i) -> void:
 	var list: Array = []
 	if not spawn_encounters:
 		return
-	var graves: Array = []
-	for camp in Encounters.camps_for_chunk(world, ch):
-		if camp.type == "risen" or camp.type == "revenant":
-			var g := FlareSprite.new()
-			g.setup("cursed_grave")
-			g.position = ground.map_to_local(camp.cells[0] + Vector2i(1, -1))
-			ysorted.add_child(g)
-			graves.append(g)
-	chunk_graves[ch] = graves
 	for camp in Encounters.camps_for_chunk(world, ch):
 		if GameState.cleared_camps.has(camp.id):
 			continue
@@ -150,10 +139,6 @@ func _spawn_camps(ch: Vector2i) -> void:
 	camp_creatures[ch] = list
 
 func _despawn_camps(ch: Vector2i) -> void:
-	for g in chunk_graves.get(ch, []):
-		if is_instance_valid(g):
-			g.queue_free()
-	chunk_graves.erase(ch)
 	for c in camp_creatures.get(ch, []):
 		if is_instance_valid(c) and not c.aggressive():
 			c.queue_free()

@@ -32,35 +32,15 @@ func test_gear_changes_the_sprite() -> void:
 	check(ArtMap.member_look("ketta", {"armor": "", "weapon": "militia-spear"})[1] == "spear", "spear doesn't show")
 	check(ArtMap.member_look("oswin", {"armor": "", "weapon": ""})[1] == "mace", "Oswin lost his mace")
 
-func test_flare_creatures_resolve() -> void:
+func test_every_creature_has_lpc_art() -> void:
+	var meta := LpcSprite.meta()
 	for t in CreatureDefs.DEFS:
 		check(ArtMap.CREATURES.has(t), "creature %s has no art mapping" % t)
-	var keys := {"cursed_grave": true}
-	for t in ArtMap.CREATURES:
-		if ArtMap.CREATURES[t].has("flare"):
-			keys[ArtMap.CREATURES[t].flare] = true
-	for k in keys:
-		var s := FlareSprite.new()
-		s.setup(k)
-		check(s._sprite.texture != null, "no atlas for %s" % k)
-		var anims: Dictionary = s.data.get("anims", {})
-		check(anims.has("idle"), "%s has no idle" % k)
-		for name in anims:
-			var dirs: Array = anims[name].dirs
-			check(dirs.size() == 8, "%s %s has %d directions" % [k, name, dirs.size()])
-			for d in dirs:
-				check(not d.is_empty(), "%s %s has an empty direction" % [k, name])
-				for f in d:
-					check(f[0] + f[2] <= s._sprite.texture.get_width() and f[1] + f[3] <= s._sprite.texture.get_height(), "%s %s frame outside atlas" % [k, name])
-		if k != "cursed_grave":
-			for name in ["walk", "attack", "die"]:
-				check(anims.has(name), "%s lacks %s" % [k, name])
-		s.free()
-
-func test_direction_mapping() -> void:
-	check(FlareSprite.dir_index(Vector2.LEFT) == 0 and FlareSprite.dir_index(Vector2.UP) == 2, "flare W/N wrong")
-	check(FlareSprite.dir_index(Vector2.RIGHT) == 4 and FlareSprite.dir_index(Vector2.DOWN) == 6, "flare E/S wrong")
-	check(FlareSprite.dir_index(Vector2(-1, 1)) == 7, "flare SW wrong")
+		if ArtMap.CREATURES.has(t):
+			var a: Dictionary = ArtMap.CREATURES[t]
+			check(meta.characters.has(a.lpc), "creature %s maps to missing art %s" % [t, a.lpc])
+			if a.weapon != "":
+				check(meta.weapons.has(a.weapon), "creature %s uses missing weapon %s" % [t, a.weapon])
 
 func test_credits_cover_the_art() -> void:
 	check(FileAccess.file_exists("res://art/CREDITS.md"), "no CREDITS.md")

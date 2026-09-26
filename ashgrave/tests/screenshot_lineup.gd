@@ -13,41 +13,43 @@ func _initialize():
 	current_scene = main
 	root.get_node("TacticalPause").settings.on_enemy_spotted = false
 	for k in 20: await process_frame
-	# find a 14x6 patch of open ground near the start
+	# Screen-horizontal rows run along (+1,-1); rows are stacked along (+3,+3).
 	var w = main.world
 	var origin = main.party.members[0].cell
-	var spot = null
-	for r in range(4, 60):
+	var spot = origin
+	var found = false
+	for r in range(0, 80):
 		for dx in range(-r, r + 1):
 			var c = origin + Vector2i(dx, r)
 			var ok = true
-			for x in range(0, 9):
-				for y in range(-2, 3):
-					var n = c + Vector2i(x - y, x + y)
+			for k in range(-1, 9):
+				for d in range(-2, 9):
+					var n = c + Vector2i(k + d, -k + d)
 					if not w.walkable(n) or w.has_tree(n) or not w.structure_at(n).is_empty():
 						ok = false
 			if ok:
 				spot = c
+				found = true
 				break
-		if spot != null:
+		if found:
 			break
-	var types = ["risen", "revenant", "ghoul", "wight", "hound", "lurker", "boar", "crows", "bandit", "crossbow", "cultist", "ash_knight", "barrow_lord"]
+	var types = ["risen", "revenant", "barrow_lord", "ghoul", "wight", "hound", "lurker", "boar", "crows", "bandit", "crossbow", "cultist", "ash_knight"]
 	var all = []
 	for i in main.party.members.size():
 		var m = main.party.members[i]
-		m.place_at(spot + Vector2i(i - 2, i + 1))
+		m.place_at(spot + Vector2i(i + 2, -(i + 2)))
 		all.append(m)
 	for i in types.size():
-		# a screen-horizontal row: +1,+1 steps... use (x - y) layout so they spread left-right
-		var c = spot + Vector2i(i / 2 + 1, -(i / 2) + (i % 2) * 2 - 1)
-		var cr = main.spawn_creature(types[i], c)
+		var row = 1 + i / 7
+		var k = i % 7
+		var cr = main.spawn_creature(types[i], spot + Vector2i(k, -k) + Vector2i(3, 3) * row)
 		cr.set_process(false)
 		all.append(cr)
 	for m in main.party.members:
 		m.set_process(false)
-	main.camera.position = main.ground.map_to_local(spot + Vector2i(3, 0))
+	main.camera.position = main.ground.map_to_local(spot + Vector2i(3, -3) + Vector2i(3, 3)) + Vector2(0, -40)
 	main.camera.position_smoothing_enabled = false
-	main.camera.zoom = Vector2(0.9, 0.9)
+	main.camera.zoom = Vector2(0.85, 0.85)
 	for a in all:
 		a.face_vec = Vector2(0.2, 1)
 		a.sprite.face(a.face_vec)

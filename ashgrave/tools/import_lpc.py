@@ -56,6 +56,9 @@ class Lpc:
         return json.load(open(f)).get(color)
 
     def find_colors(self, material, palettes, color):
+        if "." in color:                      # "ulpc.fur_brown" names the palette explicitly
+            pal, color = color.split(".", 1)
+            palettes = [pal] + palettes
         for p in palettes + ["ulpc", "lpcr"]:
             mat, pal = (p.split(".") + [None])[:2] if "." in p else (material, p)
             if pal is None:

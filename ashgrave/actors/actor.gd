@@ -341,8 +341,6 @@ func take_damage(amount: float, source: Actor = null, crit := false) -> void:
 	hp -= amount
 	_flash = 0.15
 	Audio.play("hit")
-	if sprite and sprite is FlareSprite and not sprite.one_shot and hp > 0.0:
-		sprite.play("hit", true)
 	_floaters.append({"text": ("%d!" if crit else "%d") % int(amount), "color": Color(1, 0.85, 0.3) if crit else (Color(1, 0.45, 0.4) if faction == "party" else Color(1, 1, 1)), "t": 0.0})
 	if source:
 		_on_damaged(source)
@@ -419,8 +417,8 @@ func _draw() -> void:
 			draw_set_transform(Vector2(0, -8), -PI / 2 * facing, Vector2(k, k) * 0.9)
 		_draw_body(0.0 if downed else (sin(_walk_t * 14.0) * 1.5 if not path.is_empty() else 0.0))
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
-	elif sprite is LpcSprite:
-		_ellipse(Vector2(0, 2), Vector2(12, 5) * k, Color(0, 0, 0, 0.3))
+	else:
+		_ellipse(Vector2(0, 2), Vector2(12, 5) * k * sprite.scale.x, Color(0, 0, 0, 0.3))
 	if sprite:
 		sprite.modulate = Color(1.6, 1.6, 1.6) if _flash > 0.0 else Color.WHITE
 	if not downed:
