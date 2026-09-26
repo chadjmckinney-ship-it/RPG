@@ -46,4 +46,29 @@ func test_credits_cover_the_art() -> void:
 	check(FileAccess.file_exists("res://art/CREDITS.md"), "no CREDITS.md")
 	var csv := FileAccess.get_file_as_string("res://art/lpc/CREDITS_LPC.csv")
 	check(csv.count("\n") > 50, "LPC credits look empty")
-	check(FileAccess.file_exists("res://art/flare/LICENSE_CC-BY-SA-3.0.txt"), "Flare license missing")
+	check(not DirAccess.dir_exists_absolute("res://art/flare"), "Flare art should be gone")
+	for f in ["OFL_Jersey10.txt", "OFL_UnifrakturCook.txt"]:
+		check(FileAccess.file_exists("res://art/ui/fonts/" + f), "font licence %s missing" % f)
+
+func test_every_item_has_an_icon() -> void:
+	var tex: Texture2D = load("res://art/ui/icons.png")
+	check(tex != null, "icons.png missing")
+	for id in Items.DEFS:
+		check(Icons.has(id), "item %s has no icon" % id)
+		if Icons.has(id) and tex:
+			var r := Icons.texture(id).region
+			check(r.end.x <= tex.get_width() and r.end.y <= tex.get_height(), "icon %s runs past the atlas" % id)
+
+func test_portraits_follow_the_sprite() -> void:
+	check(Portraits.character_of(null) == "", "null actor should have no portrait")
+	for armor in ["", "iron-mail"]:
+		var look: Array = ArtMap.member_look("maren", {"armor": armor, "weapon": ""})
+		check(LpcSprite.tex("res://art/lpc/chars/%s.png" % look[0]) != null, "no atlas behind the %s portrait" % look[0])
+	var idle: Dictionary = LpcSprite.meta().layout.idle
+	check(Portraits.BUST.end.x <= float(idle.size) and Portraits.BUST.end.y <= float(idle.size), "bust crop leaves the frame")
+
+func test_ui_theme_uses_the_pixel_art() -> void:
+	var t := UiTheme.get_theme()
+	check(t.default_font != null and t.default_font.resource_path.ends_with("Jersey10.ttf"), "body font isn't Jersey 10")
+	check(t.get_stylebox("panel", "PanelContainer") is StyleBoxTexture, "panels aren't using the pixel frame")
+	check(UiTheme.title_font() != null, "title font missing")

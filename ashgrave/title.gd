@@ -21,13 +21,7 @@ func _ready() -> void:
 	col.custom_minimum_size = Vector2(380, 0)
 	col.add_theme_constant_override("separation", 10)
 	add_child(col)
-	var t := Label.new()
-	t.text = "ASHGRAVE"
-	t.add_theme_font_size_override("font_size", 64)
-	t.add_theme_color_override("font_color", UiTheme.GOLD)
-	t.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
-	t.add_theme_constant_override("shadow_offset_y", 3)
-	col.add_child(t)
+	col.add_child(UiTheme.title_label("Ashgrave", 84))
 	var sub := Label.new()
 	sub.text = "The dead stopped staying buried.\nMaren Vey, deserter, is going to find out why."
 	sub.add_theme_color_override("font_color", UiTheme.MUTED)
@@ -63,13 +57,21 @@ func _ready() -> void:
 	col.add_child(quit)
 	status = Label.new()
 	status.add_theme_color_override("font_color", UiTheme.MUTED)
-	status.add_theme_font_size_override("font_size", 13)
+	status.add_theme_font_size_override("font_size", UiTheme.fs(13))
 	col.add_child(status)
 	var foot := Label.new()
 	foot.text = "Settings are in the Esc menu once you're playing."
-	foot.add_theme_font_size_override("font_size", 12)
+	foot.add_theme_font_size_override("font_size", UiTheme.fs(12))
 	foot.add_theme_color_override("font_color", UiTheme.MUTED)
 	col.add_child(foot)
+	# Maren herself, large, standing over the map
+	var hero := LpcSprite.new()
+	hero.setup("maren", "longsword")
+	hero.scale = Vector2(2.5, 2.5)
+	hero.position = Vector2(1080, 640)
+	hero.face(Vector2(-0.3, 1))
+	hero.play("idle", true)
+	add_child(hero)
 	Audio.set_music("night")
 	_refresh_preview()
 

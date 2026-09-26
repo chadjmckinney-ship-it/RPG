@@ -427,8 +427,8 @@ func _draw() -> void:
 		var y: float = -bar_height - 12.0 - f.t * 40.0
 		var c: Color = f.color
 		c.a = 1.0 - maxf(0.0, f.t - 0.6) / 0.4
-		draw_string(ThemeDB.fallback_font, Vector2(-24, y + 2), f.text, HORIZONTAL_ALIGNMENT_CENTER, 48, 26, Color(0, 0, 0, c.a))
-		draw_string(ThemeDB.fallback_font, Vector2(-25, y), f.text, HORIZONTAL_ALIGNMENT_CENTER, 48, 26, c)
+		draw_string(UiTheme.font(), Vector2(-24, y + 2), f.text, HORIZONTAL_ALIGNMENT_CENTER, 48, 32, Color(0, 0, 0, c.a))
+		draw_string(UiTheme.font(), Vector2(-25, y), f.text, HORIZONTAL_ALIGNMENT_CENTER, 48, 32, c)
 
 func _draw_bars() -> void:
 	if faction != "hostile" and hp >= max_hp and statuses.is_empty():

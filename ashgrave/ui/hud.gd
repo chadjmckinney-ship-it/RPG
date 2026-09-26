@@ -38,7 +38,7 @@ func setup(m: Node) -> void:
 	info.offset_left = 16
 	info.offset_top = -26
 	info.text = "Right: move / attack / talk   Shift+Right: queue   Q/E: abilities   Space: pause   I: pack   J: quests   M: map   Esc: menu"
-	info.add_theme_font_size_override("font_size", 12)
+	info.add_theme_font_size_override("font_size", UiTheme.fs(12))
 	log_label = _label(15, INK)
 	log_label.anchor_top = 1.0
 	log_label.anchor_bottom = 1.0
@@ -47,7 +47,7 @@ func setup(m: Node) -> void:
 	log_label.offset_right = 600
 	log_label.offset_bottom = -34
 	log_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	banner = _label(30, GOLD)
+	banner = _label(24, GOLD)
 	banner.anchor_left = 0.5
 	banner.anchor_right = 0.5
 	banner.offset_left = -300
@@ -80,7 +80,7 @@ func setup(m: Node) -> void:
 
 func _label(size: int, col: Color) -> Label:
 	var l := Label.new()
-	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_font_size_override("font_size", UiTheme.fs(size))
 	l.add_theme_color_override("font_color", col)
 	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
 	l.add_theme_constant_override("shadow_offset_x", 1)
@@ -94,28 +94,28 @@ func _process(_d: float) -> void:
 	log_label.text = "\n".join(main.combat_log.lines)
 	var t: Dictionary = main.party.targeting
 	hint.text = "" if t.is_empty() else "%s — choose a target (right-click or Esc to cancel)" % Abilities.get_def(t.id).name
-	banner.text = "PAUSED — give orders, Space to resume" if TacticalPause.paused else ""
+	banner.text = "PAUSED — give orders, Space to resume" if TacticalPause.paused and not main.panels.is_open() else ""
 	cards.queue_redraw()
 	arrow.queue_redraw()
 	var q: Dictionary = GameState.quests.get(GameState.tracked, {})
 	tracker.text = "" if q.is_empty() or q.status != "active" else "%s\n%s\n(J: quests)" % [q.title, QuestLog.current(q).text]
 
 func _draw_cards() -> void:
-	var font := ThemeDB.fallback_font
+	var font := UiTheme.font()
 	var y := 0.0
 	for i in main.party.members.size():
 		var m: PartyMember = main.party.members[i]
 		var sel: bool = main.party.selection.has(m)
 		var h := 64.0
 		cards.draw_rect(Rect2(0, y, 346, h), PANEL)
-		Portraits.draw(cards, m.companion_id, Rect2(4, y + 4, 56, 56))
+		Portraits.draw_actor(cards, m, Rect2(4, y + 4, 56, 56))
 		if sel:
 			cards.draw_rect(Rect2(0, y, 346, h), GOLD, false, 2.0)
 		cards.draw_set_transform(Vector2(62, 0))
-		cards.draw_string(font, Vector2(10, y + 18), "%d  %s" % [i + 1, m.display_name], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, GOLD if sel else INK)
-		cards.draw_string(font, Vector2(150, y + 18), "DOWN" if m.downed else m.role, HORIZONTAL_ALIGNMENT_RIGHT, 120, 12, Color(0.9, 0.4, 0.35) if m.downed else MUTED)
-		_bar(Vector2(10, y + 26), 260, m.hp / m.max_hp, Color(0.75, 0.22, 0.2), "%d/%d" % [int(m.hp), int(m.max_hp)])
-		_bar(Vector2(10, y + 36), 260, m.stamina / m.max_stamina, Color(0.75, 0.62, 0.25), "")
+		cards.draw_string(font, Vector2(10, y + 17), "%d  %s" % [i + 1, m.display_name], HORIZONTAL_ALIGNMENT_LEFT, -1, UiTheme.fs(15), GOLD if sel else INK)
+		cards.draw_string(font, Vector2(90, y + 17), "DOWN" if m.downed else m.role, HORIZONTAL_ALIGNMENT_RIGHT, 180, UiTheme.fs(12), Color(0.9, 0.4, 0.35) if m.downed else MUTED)
+		_bar(Vector2(10, y + 23), 260, m.hp / m.max_hp, Color(0.75, 0.22, 0.2), "%d/%d" % [int(m.hp), int(m.max_hp)], 11.0)
+		_bar(Vector2(10, y + 37), 260, m.stamina / m.max_stamina, Color(0.75, 0.62, 0.25), "")
 		var x := 10.0
 		for s in m.abilities.size():
 			var id: String = m.abilities[s]
@@ -125,16 +125,16 @@ func _draw_cards() -> void:
 			var label := "%s %s" % ["QE"[s], a.name]
 			if cd > 0.0:
 				label += " %.0fs" % ceilf(cd)
-			cards.draw_string(font, Vector2(x, y + 57), label, HORIZONTAL_ALIGNMENT_LEFT, 130, 12, INK if ready else Color(0.5, 0.5, 0.5))
+			cards.draw_string(font, Vector2(x, y + 57), label, HORIZONTAL_ALIGNMENT_LEFT, 130, UiTheme.fs(12), INK if ready else Color(0.5, 0.5, 0.5))
 			x += 132.0
 		cards.draw_set_transform(Vector2.ZERO)
 		y += h + 6.0
 
-func _bar(p: Vector2, w: float, frac: float, col: Color, text: String) -> void:
-	cards.draw_rect(Rect2(p, Vector2(w, 7)), Color(0, 0, 0, 0.6))
-	cards.draw_rect(Rect2(p, Vector2(w * clampf(frac, 0.0, 1.0), 7)), col)
+func _bar(p: Vector2, w: float, frac: float, col: Color, text: String, h := 7.0) -> void:
+	cards.draw_rect(Rect2(p, Vector2(w, h)), Color(0, 0, 0, 0.6))
+	cards.draw_rect(Rect2(p, Vector2(w * clampf(frac, 0.0, 1.0), h)), col)
 	if text != "":
-		cards.draw_string(ThemeDB.fallback_font, p + Vector2(w - 60, -1), text, HORIZONTAL_ALIGNMENT_RIGHT, 60, 10, INK)
+		cards.draw_string(UiTheme.font(), p + Vector2(w - 64, h - 1), text, HORIZONTAL_ALIGNMENT_RIGHT, 60, UiTheme.fs(9), INK)
 
 ## Objective marker: a diamond on the target if visible, else an arrow at the screen edge.
 func _draw_arrow() -> void:
@@ -159,4 +159,4 @@ func _draw_arrow() -> void:
 	var p := center + dir * t
 	var side := dir.orthogonal() * 10.0
 	arrow.draw_colored_polygon(PackedVector2Array([p + dir * 16.0, p - dir * 8.0 + side, p - dir * 8.0 - side]), col)
-	arrow.draw_string(ThemeDB.fallback_font, p - dir * 34.0 - Vector2(20, -5), "%d" % dist, HORIZONTAL_ALIGNMENT_CENTER, 40, 13, col)
+	arrow.draw_string(UiTheme.font(), p - dir * 34.0 - Vector2(20, -5), "%d" % dist, HORIZONTAL_ALIGNMENT_CENTER, 40, UiTheme.fs(13), col)

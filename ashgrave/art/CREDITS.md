@@ -1,6 +1,6 @@
 # Art credits
 
-Ashgrave's code is original. Its art comes from open-licensed projects. All of it may be used, modified and redistributed, including commercially, **as long as the authors are credited and modified art stays under the same license (share-alike)**.
+Ashgrave's code is original. Its art comes from open-licensed projects. All of it may be used, modified and redistributed, including commercially, **as long as the authors are credited** (and, for the CC-BY-SA LPC layers, modified art stays under the same license).
 
 ## People: Liberated Pixel Cup (LPC)
 Every character and creature (Maren, companions, villagers, bandits, cultists, skeletons, zombies, beast-folk, the bosses) is assembled from layers of the
@@ -13,14 +13,22 @@ Ground textures, trees, rocks, plants, village props, the cottages and the landm
 They were cropped, graded darker and recomposited by `tools/import_world.py` (cottages re-skinned with stone walls; the barrow,
 chapel and watchtower assembled from rocks, walls and pillars). Per-folder artist credits are in [`world/CREDITS_WORLD.txt`](world/CREDITS_WORLD.txt).
 
-## Portraits: Flare
-The painted portraits come from
-[Flare](https://github.com/flareteam/flare-game) (`fantasycore` and `empyrean_campaign`), licensed
-[CC-BY-SA 3.0](flare/LICENSE_CC-BY-SA-3.0.txt). They were resized by `tools/import_flare.py`. Artists are listed in [`flare/CREDITS_FLARE.txt`](flare/CREDITS_FLARE.txt).
+## Portraits
+Portraits are head-and-shoulder crops of each character's own LPC sprite (above), drawn by `ui/portraits.gd`.
+
+## Item icons and UI
+Item icons are cut from Eliza Wyatt's LPC small items ([ElizaWy/LPC](https://github.com/ElizaWy/LPC), OGA-BY 3.0 / CC-BY 3.0+;
+per-folder credits for `Objects/Small Items` apply) and from the baked LPC outfits; weapon and coin icons and the panel frames
+are original pixel art. All made by `tools/import_ui.py`.
+
+## Fonts
+[Jersey 10](https://github.com/google/fonts/tree/main/ofl/jersey10) (The Soft Type Project Authors) for text and
+[UnifrakturCook](https://github.com/google/fonts/tree/main/ofl/unifrakturcook) (j. 'mach' wust) for titles, both under the
+SIL Open Font License 1.1 ([`ui/fonts/`](ui/fonts/)).
 
 ## Regenerating
 ```sh
 python3 tools/import_lpc.py      # needs Pillow + git; fetches only the layers it uses
-python3 tools/import_flare.py
 python3 tools/import_world.py
+python3 tools/import_ui.py
 ```

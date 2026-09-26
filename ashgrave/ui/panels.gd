@@ -40,7 +40,7 @@ func setup(m: Node) -> void:
 	root.add_child(body)
 	var head := HBoxContainer.new()
 	body.add_child(head)
-	title = _label("", 20, GOLD)
+	title = UiTheme.title_label("", 32)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
 	var close := Button.new()
@@ -174,13 +174,13 @@ func _tab_pack() -> void:
 	_section("Consumables — used by %s" % who.display_name)
 	for id in inv.ids_of_type("consumable"):
 		var d := Items.get_def(id)
-		_row("%s ×%d" % [d.name, inv.count(id)], d.get("desc", ""), "Use", func(): who.use_item(id, inv); refresh())
+		_row("%s ×%d" % [d.name, inv.count(id)], d.get("desc", ""), "Use", func(): who.use_item(id, inv); refresh(), false, id)
 	_section("Materials")
 	for id in inv.ids_of_type("material"):
-		_row("%s ×%d" % [Items.item_name(id), inv.count(id)], "worth %d" % Items.get_def(id).value)
+		_row("%s ×%d" % [Items.item_name(id), inv.count(id)], "worth %d" % Items.get_def(id).value, "", Callable(), false, id)
 	_section("Spare gear")
 	for id in inv.ids_of_type("gear"):
-		_row("%s ×%d" % [Items.item_name(id), inv.count(id)], _bonus_text(id))
+		_row("%s ×%d" % [Items.item_name(id), inv.count(id)], _bonus_text(id), "", Callable(), false, id)
 	if inv.counts.size() <= 1:
 		content.add_child(_label("Gather herbs, ore and deadwood, or loot what you kill.", 14, MUTED))
 
@@ -193,10 +193,10 @@ func _tab_gear() -> void:
 			if id == "":
 				_row("%s: —" % slot.capitalize(), "")
 			else:
-				_row("%s: %s" % [slot.capitalize(), Items.item_name(id)], _bonus_text(id), "Remove", func(): m.unequip(slot, inv); refresh())
+				_row("%s: %s" % [slot.capitalize(), Items.item_name(id)], _bonus_text(id), "Remove", func(): m.unequip(slot, inv); refresh(), false, id)
 		for id in inv.ids_of_type("gear"):
 			if Items.can_wield(m, id):
-				_row("   %s" % Items.item_name(id), _bonus_text(id), "Equip", func(): m.equip(id, inv); refresh())
+				_row("   %s" % Items.item_name(id), _bonus_text(id), "Equip", func(): m.equip(id, inv); refresh(), false, id)
 
 func _tab_craft() -> void:
 	var st: Array = main.stations()
@@ -212,7 +212,7 @@ func _tab_craft() -> void:
 			if Crafting.craft(GameState.inventory, id, main.stations()):
 				Events.combat_message.emit("Crafted %s." % Items.item_name(id))
 			refresh()
-		_row(out, detail, "Craft", do_craft, not ok)
+		_row(out, detail, "Craft", do_craft, not ok, id)
 
 func _tab_quests() -> void:
 	var list := GameState.quests.values()
@@ -243,9 +243,9 @@ func _dialogue() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	var face := Control.new()
-	face.custom_minimum_size = Vector2(110, 110)
+	face.custom_minimum_size = Vector2(112, 112)
 	var npc = dialogue.npc
-	face.draw.connect(func(): Portraits.draw(face, npc.npc_id, Rect2(Vector2.ZERO, Vector2(110, 110)), npc.trader_faction()))
+	face.draw.connect(func(): Portraits.draw_actor(face, npc, Rect2(Vector2.ZERO, Vector2(112, 112))))
 	row.add_child(face)
 	var said := _label(n.text, 16, INK)
 	said.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -298,7 +298,7 @@ func _trade() -> void:
 				Events.combat_message.emit("Bought %s." % Items.item_name(id))
 			refresh()
 		var info: String = _bonus_text(id) if Items.get_def(id).type == "gear" else Items.get_def(id).get("desc", "")
-		_row("%s — %d coin" % [Items.item_name(id), price], info, "Buy", buy, inv.count("coin") < price)
+		_row("%s — %d coin" % [Items.item_name(id), price], info, "Buy", buy, inv.count("coin") < price, id)
 	_section("Sell")
 	for id in inv.counts.keys():
 		if id == "coin":
@@ -309,7 +309,7 @@ func _trade() -> void:
 				Audio.play("coin", 0.0)
 				inv.add("coin", price)
 			refresh()
-		_row("%s ×%d — %d coin each" % [Items.item_name(id), inv.count(id), price], "", "Sell", sell)
+		_row("%s ×%d — %d coin each" % [Items.item_name(id), inv.count(id), price], "", "Sell", sell, false, id)
 
 func _chatter(v: Villager) -> String:
 	var lines := {
@@ -335,12 +335,16 @@ func _section(text: String) -> void:
 	var l := _label(text, 15, GOLD)
 	content.add_child(l)
 
-func _row(text: String, detail: String, action := "", cb: Callable = Callable(), disabled := false) -> void:
+func _row(text: String, detail: String, action := "", cb: Callable = Callable(), disabled := false, icon := "") -> void:
 	var h := HBoxContainer.new()
-	var l := _label(text, 14, INK)
-	l.custom_minimum_size.x = 250
+	if icon != "":
+		h.add_child(Icons.rect(icon))
+	var l := _label(text, 15, INK)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.custom_minimum_size.x = 250 if icon == "" else 214
 	h.add_child(l)
-	var d := _label(detail, 13, MUTED)
+	var d := _label(detail, 14, MUTED)
+	d.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	d.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(d)
 	if action != "":
@@ -355,7 +359,7 @@ func _label(text: String, size: int, col: Color) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_font_size_override("font_size", UiTheme.fs(size))
 	l.add_theme_color_override("font_color", col)
 	return l
 
@@ -420,17 +424,17 @@ func _draw_map(c: Control) -> void:
 	c.draw_set_transform_matrix(t * Transform2D(0.0, Vector2(s, s), 0.0, Vector2.ZERO))
 	c.draw_texture(WorldMap.texture(w), Vector2.ZERO)
 	c.draw_set_transform_matrix(Transform2D.IDENTITY)
-	var font := ThemeDB.fallback_font
+	var font := UiTheme.font()
 	for v in w.villages():
 		var p: Vector2 = t * Vector2(v.center)
-		c.draw_string(font, p + Vector2(-40, -6), v.name, HORIZONTAL_ALIGNMENT_CENTER, 80, 11, INK)
+		c.draw_string(font, p + Vector2(-40, -6), v.name, HORIZONTAL_ALIGNMENT_CENTER, 80, UiTheme.fs(11), INK)
 	var q: Dictionary = GameState.quests.get(GameState.tracked, {})
 	if not q.is_empty() and q.status == "active":
 		var cell = QuestLog.target_cell(q)
 		if cell != null:
 			var tp: Vector2 = t * Vector2(cell)
 			c.draw_arc(tp, 7, 0, TAU, 16, GOLD, 2.0)
-			c.draw_string(font, tp + Vector2(-60, 18), q.title, HORIZONTAL_ALIGNMENT_CENTER, 120, 11, GOLD)
+			c.draw_string(font, tp + Vector2(-60, 18), q.title, HORIZONTAL_ALIGNMENT_CENTER, 120, UiTheme.fs(11), GOLD)
 	var pp: Vector2 = t * Vector2(main.party.leader().cell)
 	c.draw_circle(pp, 4, Color(0.95, 0.3, 0.25))
 	c.draw_arc(pp, 7, 0, TAU, 16, Color(0.95, 0.3, 0.25), 1.5)
