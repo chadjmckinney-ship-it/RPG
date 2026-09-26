@@ -29,6 +29,7 @@ func _ready() -> void:
 	add_child(_music_a)
 	add_child(_music_b)
 	_build_sfx()
+	Settings.load_and_apply.call_deferred()
 	_task = WorkerThreadPool.add_task(_build_music_all, false, "ashgrave music")
 
 func _exit_tree() -> void:

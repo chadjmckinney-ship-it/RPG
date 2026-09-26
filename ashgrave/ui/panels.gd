@@ -33,12 +33,7 @@ func setup(m: Node) -> void:
 	root.offset_right = 330
 	root.offset_top = -250
 	root.offset_bottom = 250
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.07, 0.065, 0.06, 0.95)
-	sb.border_color = Color("6a5a3a")
-	sb.set_border_width_all(2)
-	sb.set_content_margin_all(14)
-	root.add_theme_stylebox_override("panel", sb)
+	root.theme = UiTheme.get_theme()
 	add_child(root)
 	body = VBoxContainer.new()
 	body.add_theme_constant_override("separation", 8)
@@ -83,6 +78,12 @@ func open_dialogue(v: Node) -> void:
 	trader = v
 	_open("dialogue")
 
+func open_menu() -> void:
+	_open("menu")
+
+func open_map() -> void:
+	_open("map")
+
 func open_quests() -> void:
 	tab = "quests"
 	_open("pack")
@@ -109,9 +110,18 @@ func close_all() -> void:
 	Events.ui_opened.emit(false)
 
 func _unhandled_input(event: InputEvent) -> void:
-	if mode != "" and event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		close_all()
-		get_viewport().set_input_as_handled()
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		if mode != "":
+			close_all()
+			get_viewport().set_input_as_handled()
+		elif main.party.targeting.is_empty():
+			open_menu()
+			get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
+		if mode == "map":
+			close_all()
+		elif mode == "":
+			open_map()
 	elif mode == "dialogue" and event is InputEventKey and event.pressed and event.keycode >= KEY_1 and event.keycode <= KEY_9:
 		_pick(event.keycode - KEY_1)
 		get_viewport().set_input_as_handled()
@@ -142,6 +152,12 @@ func refresh() -> void:
 		_trade()
 	elif mode == "dialogue":
 		_dialogue()
+	elif mode == "menu":
+		_menu()
+	elif mode == "settings":
+		_settings()
+	elif mode == "map":
+		_map()
 	elif mode == "note":
 		title.text = ""
 		content.add_child(_label(note_text, 17, INK))
@@ -224,7 +240,17 @@ func _tab_quests() -> void:
 func _dialogue() -> void:
 	var n: Dictionary = dialogue.node
 	title.text = n.speaker
-	content.add_child(_label(n.text, 16, INK))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	var face := Control.new()
+	face.custom_minimum_size = Vector2(110, 110)
+	var npc = dialogue.npc
+	face.draw.connect(func(): Portraits.draw(face, npc.npc_id, Rect2(Vector2.ZERO, Vector2(110, 110)), npc.trader_faction()))
+	row.add_child(face)
+	var said := _label(n.text, 16, INK)
+	said.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(said)
+	content.add_child(row)
 	content.add_child(HSeparator.new())
 	for i in n.choices.size():
 		var c: Dictionary = n.choices[i]
@@ -332,3 +358,79 @@ func _label(text: String, size: int, col: Color) -> Label:
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", col)
 	return l
+
+# ---------------------------------------------------------------- menu, settings, map
+
+func _menu() -> void:
+	title.text = "Ashgrave — day %d, %s" % [TimeOfDay.day, TimeOfDay.clock_text()]
+	var items := [
+		["Resume", close_all],
+		["Save game (F5)", func(): main.save_game(); close_all()],
+		["Load last save (F9)", func(): close_all(); main.load_game()],
+		["World map (M)", func(): mode = "map"; refresh()],
+		["Quest log (J)", func(): tab = "quests"; mode = "pack"; refresh()],
+		["Settings", func(): mode = "settings"; refresh()],
+		["Quit to title", func(): close_all(); TacticalPause.set_paused(false); get_tree().change_scene_to_file("res://title.tscn")],
+	]
+	for it in items:
+		var b := Button.new()
+		b.text = it[0]
+		b.pressed.connect(it[1])
+		content.add_child(b)
+
+func _settings() -> void:
+	title.text = "Settings"
+	for k in ["master", "music", "sfx"]:
+		var h := HBoxContainer.new()
+		var l := _label(k.capitalize() + " volume", 14, INK)
+		l.custom_minimum_size.x = 200
+		h.add_child(l)
+		var sl := HSlider.new()
+		sl.min_value = 0.0
+		sl.max_value = 1.0
+		sl.step = 0.05
+		sl.value = Audio.volume[k]
+		sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		sl.value_changed.connect(func(v): Audio.volume[k] = v; Settings.save())
+		h.add_child(sl)
+		content.add_child(h)
+	for k in TacticalPause.settings:
+		var cb := CheckBox.new()
+		cb.text = {"on_enemy_spotted": "Pause when enemies spot the party", "on_low_health": "Pause when someone is badly hurt"}.get(k, k)
+		cb.button_pressed = TacticalPause.settings[k]
+		cb.toggled.connect(func(v): TacticalPause.settings[k] = v; Settings.save())
+		content.add_child(cb)
+	var back := Button.new()
+	back.text = "Back"
+	back.pressed.connect(func(): mode = "menu"; refresh())
+	content.add_child(back)
+
+func _map() -> void:
+	title.text = "The province — M or Esc to close"
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(630, 400)
+	c.draw.connect(_draw_map.bind(c))
+	content.add_child(c)
+
+func _draw_map(c: Control) -> void:
+	var r := Rect2(Vector2.ZERO, c.size)
+	var t := WorldMap.iso_transform(r)
+	var w: WorldGen = main.world
+	var s := float(WorldMap.SCALE)
+	c.draw_set_transform_matrix(t * Transform2D(0.0, Vector2(s, s), 0.0, Vector2.ZERO))
+	c.draw_texture(WorldMap.texture(w), Vector2.ZERO)
+	c.draw_set_transform_matrix(Transform2D.IDENTITY)
+	var font := ThemeDB.fallback_font
+	for v in w.villages():
+		var p: Vector2 = t * Vector2(v.center)
+		c.draw_string(font, p + Vector2(-40, -6), v.name, HORIZONTAL_ALIGNMENT_CENTER, 80, 11, INK)
+	var q: Dictionary = GameState.quests.get(GameState.tracked, {})
+	if not q.is_empty() and q.status == "active":
+		var cell = QuestLog.target_cell(q)
+		if cell != null:
+			var tp: Vector2 = t * Vector2(cell)
+			c.draw_arc(tp, 7, 0, TAU, 16, GOLD, 2.0)
+			c.draw_string(font, tp + Vector2(-60, 18), q.title, HORIZONTAL_ALIGNMENT_CENTER, 120, 11, GOLD)
+	var pp: Vector2 = t * Vector2(main.party.leader().cell)
+	c.draw_circle(pp, 4, Color(0.95, 0.3, 0.25))
+	c.draw_arc(pp, 7, 0, TAU, 16, Color(0.95, 0.3, 0.25), 1.5)

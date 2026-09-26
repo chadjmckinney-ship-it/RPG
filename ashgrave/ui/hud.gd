@@ -37,7 +37,8 @@ func setup(m: Node) -> void:
 	info.anchor_bottom = 1.0
 	info.offset_left = 16
 	info.offset_top = -26
-	info.text = "Left: select   Right: move / attack   Shift+Right: queue   Q/E: abilities   1-3 / Tab: pick   Space: pause   WASD, wheel: camera"
+	info.text = "Right: move / attack / talk   Shift+Right: queue   Q/E: abilities   Space: pause   I: pack   J: quests   M: map   Esc: menu"
+	info.add_theme_font_size_override("font_size", 12)
 	log_label = _label(15, INK)
 	log_label.anchor_top = 1.0
 	log_label.anchor_bottom = 1.0
@@ -106,9 +107,11 @@ func _draw_cards() -> void:
 		var m: PartyMember = main.party.members[i]
 		var sel: bool = main.party.selection.has(m)
 		var h := 64.0
-		cards.draw_rect(Rect2(0, y, 280, h), PANEL)
+		cards.draw_rect(Rect2(0, y, 346, h), PANEL)
+		Portraits.draw(cards, m.companion_id, Rect2(4, y + 4, 56, 56))
 		if sel:
-			cards.draw_rect(Rect2(0, y, 280, h), GOLD, false, 2.0)
+			cards.draw_rect(Rect2(0, y, 346, h), GOLD, false, 2.0)
+		cards.draw_set_transform(Vector2(62, 0))
 		cards.draw_string(font, Vector2(10, y + 18), "%d  %s" % [i + 1, m.display_name], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, GOLD if sel else INK)
 		cards.draw_string(font, Vector2(150, y + 18), "DOWN" if m.downed else m.role, HORIZONTAL_ALIGNMENT_RIGHT, 120, 12, Color(0.9, 0.4, 0.35) if m.downed else MUTED)
 		_bar(Vector2(10, y + 26), 260, m.hp / m.max_hp, Color(0.75, 0.22, 0.2), "%d/%d" % [int(m.hp), int(m.max_hp)])
@@ -124,6 +127,7 @@ func _draw_cards() -> void:
 				label += " %.0fs" % ceilf(cd)
 			cards.draw_string(font, Vector2(x, y + 57), label, HORIZONTAL_ALIGNMENT_LEFT, 130, 12, INK if ready else Color(0.5, 0.5, 0.5))
 			x += 132.0
+		cards.draw_set_transform(Vector2.ZERO)
 		y += h + 6.0
 
 func _bar(p: Vector2, w: float, frac: float, col: Color, text: String) -> void:
