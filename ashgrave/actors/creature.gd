@@ -126,11 +126,11 @@ func _drop_loot() -> void:
 		if v is Array:
 			var n := randi_range(v[0], v[1])
 			if n > 0:
-				GameState.loot[k] = GameState.loot.get(k, 0) + n
-				got.append("%d %s" % [n, k])
+				GameState.inventory.add(k, n)
+				got.append("%d %s" % [n, Items.item_name(k)])
 		elif randf() < v:
-			GameState.loot[k] = GameState.loot.get(k, 0) + 1
-			got.append(k)
+			GameState.inventory.add(k)
+			got.append(Items.item_name(k))
 	if not got.is_empty():
 		log_msg("Looted: " + ", ".join(got))
 

@@ -2,7 +2,7 @@
 
 Open-world isometric RPG in Godot 4.3 (GDScript). Dark low fantasy: Maren Vey, a deserter scout, leads a party of up to four across a procedurally generated plague province.
 
-Status: **Milestone 2 (combat core)**. Seeded chunk-streamed world, party control, real-time combat with tactical pause and queued orders, 4 creature types in seeded camps, 6 abilities, day/night cycle.
+Status: **Milestone 3 (sandbox)**. Seeded world with villages, real-time party combat with tactical pause, gathering, crafting, equipment, trading, villager daily routines, faction reputation, and save/load.
 
 ## Run
 Open this folder in Godot 4.3 and press F5.
@@ -15,6 +15,10 @@ Open this folder in Godot 4.3 and press F5.
 | Q / E | First selected member's abilities (targeted ones wait for a left-click) |
 | 1–3, Tab | Select one member / everyone |
 | Space | Tactical pause (orders still work). Auto-pauses when enemies spot you or someone is badly hurt |
+| Right-click a villager | Talk / trade (smiths and tavern keepers) |
+| Right-click a herb, ore seam or deadwood | Gather it |
+| I | Pack: items, gear, crafting, factions |
+| F5 / F9 | Save / load |
 | WASD, wheel | Pan, zoom |
 
 ## Tests

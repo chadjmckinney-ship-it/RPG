@@ -31,8 +31,11 @@ var shade: CanvasModulate
 var hud: Hud
 var fx: Fx
 var combat_log := CombatLog.new()
-var actors: Array = []            # every live Actor (party + creatures)
+var actors: Array = []            # every live Actor (party, creatures, villagers)
 var camp_creatures := {}          # chunk -> Array[Creature]
+var chunk_props := {}             # chunk -> Array[Node] (buildings, villagers, gather nodes)
+var gather_nodes: Array = []
+var panels: Panels
 var calm_time := 0.0
 var in_combat := false
 var _low_hp_warned := {}
@@ -41,6 +44,8 @@ var spawn_encounters := true     # tests switch this off before adding the scene
 
 func _ready() -> void:
 	Actor.ctx = self
+	if not GameState.pending_load.is_empty():
+		GameState.load_dict(GameState.pending_load)
 	if GameState.world == null:
 		GameState.new_world(GameState.world_seed)
 	world = GameState.world
@@ -64,6 +69,8 @@ func _ready() -> void:
 	add_child(streamer)
 	streamer.chunk_loaded.connect(_spawn_camps)
 	streamer.chunk_unloaded.connect(_despawn_camps)
+	streamer.chunk_loaded.connect(_spawn_props)
+	streamer.chunk_unloaded.connect(_despawn_props)
 	streamer.setup(world, ground, trees)
 	fx = Fx.new()
 	fx.z_index = 5
@@ -95,6 +102,11 @@ func _ready() -> void:
 		party.members.append(m)
 		actors.append(m)
 	party.select([party.members[0]])
+	if not GameState.pending_load.is_empty():
+		var data := GameState.pending_load
+		GameState.pending_load = {}
+		apply_party_state(data.get("party", []))
+		spawn = party.members[0].cell
 
 	streamer.focus_cell = spawn
 	streamer.load_all_now()
@@ -112,6 +124,10 @@ func _ready() -> void:
 	hud = Hud.new()
 	add_child(hud)
 	hud.setup(self)
+	panels = Panels.new()
+	add_child(panels)
+	panels.setup(self)
+	Events.talk_requested.connect(panels.open_trade)
 	log_msg("Maren Vey's company makes camp at the edge of the wilds.")
 
 func log_msg(text: String) -> void:
@@ -148,7 +164,11 @@ func _despawn_camps(ch: Vector2i) -> void:
 			c.queue_free()
 	camp_creatures.erase(ch)
 
+const KILL_REP := {"cultist": {"church": 2, "hollow": -3}, "risen": {"church": 1}}
+
 func _on_creature_died(c: Actor) -> void:
+	for f in KILL_REP.get(c.type_id, {}):
+		GameState.change_rep(f, KILL_REP[c.type_id][f])
 	var camp: String = c.camp_id
 	if camp == "":
 		return
@@ -157,6 +177,10 @@ func _on_creature_died(c: Actor) -> void:
 			return
 	GameState.cleared_camps[camp] = true
 	log_msg("The camp falls silent.")
+	var v := world.village_near(c.cell, 48.0)
+	if not v.is_empty():
+		log_msg("Word reaches %s." % v.name)
+		GameState.change_rep(v.faction, 4)
 
 func _on_enemy_spotted(c: Node) -> void:
 	if not in_combat and TacticalPause.settings.on_enemy_spotted:
@@ -164,6 +188,104 @@ func _on_enemy_spotted(c: Node) -> void:
 		TacticalPause.set_paused(true)
 	in_combat = true
 	calm_time = 0.0
+
+# ---------------------------------------------------------------- settlements & resources
+
+func _spawn_props(ch: Vector2i) -> void:
+	var list: Array = []
+	for v in world.villages():
+		if streamer.chunk_of(v.center) != ch:
+			continue
+		for kind in Settlements.LAYOUT:
+			var st := Structure.new()
+			st.kind = kind
+			st.village = v
+			var a := Settlements.building_cell(v, kind)
+			st.position = ground.map_to_local(a + Vector2i(1, 1)) + Vector2(0, 16)
+			ysorted.add_child(st)
+			list.append(st)
+		var jobs := ["smith", "keeper", "villager", "villager"]
+		for i in jobs.size():
+			var vil := Villager.new()
+			vil.map_layer = ground
+			vil.world = world
+			vil.setup(v, jobs[i], i)
+			ysorted.add_child(vil)
+			vil.place_at(party._free_near(vil.schedule_target(TimeOfDay.hour()), {}))
+			actors.append(vil)
+			vil.tree_exiting.connect(func(): actors.erase(vil))
+			list.append(vil)
+	for d in Gathering.nodes_for_chunk(world, ch):
+		var n := GatherNode.new()
+		n.data = d
+		n.position = ground.map_to_local(d.cell)
+		ysorted.add_child(n)
+		gather_nodes.append(n)
+		n.tree_exiting.connect(func(): gather_nodes.erase(n))
+		list.append(n)
+	chunk_props[ch] = list
+
+func _despawn_props(ch: Vector2i) -> void:
+	for n in chunk_props.get(ch, []):
+		if is_instance_valid(n):
+			n.queue_free()
+	chunk_props.erase(ch)
+
+## Crafting stations available right now.
+func stations() -> Array:
+	var out: Array = []
+	if not in_combat:
+		out.append("camp")
+	for v in world.villages():
+		var forge := Settlements.door_cell(v, "forge")
+		if party.members.any(func(m): return m.alive() and m.cell_distance(forge) <= 4.0):
+			out.append("forge")
+			break
+	return out
+
+# ---------------------------------------------------------------- save / load
+
+func party_state() -> Array:
+	var out: Array = []
+	for m in party.members:
+		out.append({"name": m.display_name, "cell": [m.cell.x, m.cell.y], "hp": m.hp, "stamina": m.stamina,
+			"downed": m.downed, "equipment": m.equipment.duplicate()})
+	return out
+
+func apply_party_state(list: Array) -> void:
+	for d in list:
+		for m in party.members:
+			if m.display_name != d.name:
+				continue
+			m.equipment = {"weapon": String(d.equipment.get("weapon", "")), "armor": String(d.equipment.get("armor", ""))}
+			m.recompute_stats()
+			m.hp = float(d.hp)
+			m.stamina = float(d.stamina)
+			m.downed = bool(d.downed)
+			m.orders.clear()
+			m.current = null
+			m.place_at(Vector2i(int(d.cell[0]), int(d.cell[1])))
+	pathfinder.ensure_covers(party.members[0].cell)
+	streamer.focus_cell = party.members[0].cell
+	if camera:
+		camera.position = party.members[0].position
+
+func save_game() -> bool:
+	if in_combat:
+		log_msg("You can't save with enemies nearby.")
+		return false
+	var ok := GameState.write_save(GameState.to_dict(party_state()))
+	log_msg("Game saved (day %d, %s)." % [TimeOfDay.day, TimeOfDay.clock_text()] if ok else "Saving failed.")
+	return ok
+
+func load_game() -> void:
+	var data := GameState.read_save()
+	if data.is_empty():
+		log_msg("No saved game yet (F5 saves).")
+		return
+	GameState.pending_load = data
+	TacticalPause.set_paused(false)
+	get_tree().change_scene_to_file("res://main.tscn")
 
 # ---------------------------------------------------------------- loop
 
@@ -236,6 +358,11 @@ func _pan_vector() -> Vector2:
 	return v
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_I: panels.toggle_pack()
+			KEY_F5: save_game()
+			KEY_F9: load_game()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			camera.zoom = (camera.zoom * 1.1).clamp(Vector2(0.5, 0.5), Vector2(3, 3))

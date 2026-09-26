@@ -57,8 +57,9 @@ func place_at(c: Vector2i) -> void:
 	position = map_layer.map_to_local(c)
 	path.clear()
 
+## Only "hostile" creatures fight; party and neutral villagers never attack each other.
 func is_hostile_to(other: Actor) -> bool:
-	return other.faction != faction
+	return (other.faction == "hostile") != (faction == "hostile")
 
 func alive() -> bool:
 	return not downed and is_instance_valid(self)
@@ -143,6 +144,29 @@ func _run_order(delta: float) -> void:
 		_follow_path(delta)
 		if path.is_empty():
 			current = null
+		return
+	if o.type == "interact":
+		var node = o.get("node")
+		if node == null or not is_instance_valid(node):
+			current = null
+			return
+		var ncell: Vector2i = node.cell if node is Actor else o.cell
+		if cell_distance(ncell) <= o.get("range", 1.6) + 0.01:
+			path.clear()
+			_face(node.global_position)
+			current = null
+			node.on_interact(self)
+			return
+		_repath -= delta
+		if _repath <= 0.0 or path.is_empty():
+			_repath = 0.5
+			path = _path_to(ncell)
+			if not path.is_empty() and path[0] == cell:
+				path.remove_at(0)
+			# Target cell itself may be blocked (a building front): stop one short.
+			if not path.is_empty() and path[path.size() - 1] == ncell and not world.walkable(ncell):
+				path.remove_at(path.size() - 1)
+		_follow_path(delta)
 		return
 	# attack / ability
 	var tgt = o.get("target")
@@ -360,7 +384,7 @@ func _draw() -> void:
 		draw_string(ThemeDB.fallback_font, Vector2(-13, y), f.text, HORIZONTAL_ALIGNMENT_CENTER, 24, 15, c)
 
 func _draw_bars() -> void:
-	if faction == "party" and hp >= max_hp and statuses.is_empty():
+	if faction != "hostile" and hp >= max_hp and statuses.is_empty():
 		return
 	var w := 28.0
 	var y := -56.0

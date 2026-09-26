@@ -12,8 +12,62 @@ var look := {
 	"legs": Color("2e2a26"), "slim": false, "hood": false,
 }
 
+var base_stats := {}
+var equipment := {"weapon": "", "armor": ""}
+
 func _init() -> void:
 	faction = "party"
+
+func setup_stats(d: Dictionary) -> void:
+	base_stats = d.duplicate()
+	super.setup_stats(d)
+
+## Equip from the party pack; the previous item goes back into it.
+func equip(id: String, inv: Inventory) -> bool:
+	if not Items.can_wield(self, id) or not inv.has(id):
+		return false
+	var slot: String = Items.get_def(id).slot
+	inv.remove(id)
+	if equipment[slot] != "":
+		inv.add(equipment[slot])
+	equipment[slot] = id
+	recompute_stats()
+	return true
+
+func unequip(slot: String, inv: Inventory) -> void:
+	if equipment.get(slot, "") == "":
+		return
+	inv.add(equipment[slot])
+	equipment[slot] = ""
+	recompute_stats()
+
+func recompute_stats() -> void:
+	var hp_frac := hp / max_hp if max_hp > 0.0 else 1.0
+	for k in base_stats:
+		set(k, base_stats[k])
+	for slot in equipment:
+		var id: String = equipment[slot]
+		if id == "":
+			continue
+		var bonus: Dictionary = Items.get_def(id).get("bonus", {})
+		for k in bonus:
+			set(k, float(get(k)) + bonus[k])
+	hp = clampf(max_hp * hp_frac, 1.0 if not downed else 0.0, max_hp)
+	stamina = minf(stamina, max_stamina)
+
+func use_item(id: String, inv: Inventory) -> bool:
+	var d := Items.get_def(id)
+	if d.get("type") != "consumable" or downed or not inv.has(id):
+		return false
+	if d.has("heal") and hp >= max_hp and not (d.has("cure") and d.cure.any(func(c): return statuses.has(c))):
+		return false
+	inv.remove(id)
+	if d.has("heal"):
+		heal(d.heal)
+	for c in d.get("cure", []):
+		statuses.erase(c)
+	log_msg("%s uses %s." % [display_name, d.name])
+	return true
 
 func _idle(_delta: float) -> void:
 	# Defend yourself and your companions: engage the nearest hostile that is fighting nearby.

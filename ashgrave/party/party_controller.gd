@@ -42,13 +42,31 @@ func mouse_cell() -> Vector2i:
 	return map_layer.local_to_map(map_layer.to_local(get_global_mouse_position()))
 
 ## The actor drawn under a screen point (bodies extend upward from the feet).
+## want_hostile: true = creatures, false = party members; neutral villagers use villager_at().
 func actor_at(p: Vector2, want_hostile: bool) -> Actor:
+	return _actor_of(p, "hostile" if want_hostile else "party")
+
+func villager_at(p: Vector2) -> Actor:
+	return _actor_of(p, "neutral")
+
+func gather_node_at(p: Vector2) -> Node2D:
+	var best: Node2D = null
+	var best_d := 22.0
+	for n in (Actor.ctx.gather_nodes if Actor.ctx else []):
+		if is_instance_valid(n):
+			var d: float = (n.global_position + Vector2(0, -6)).distance_to(p)
+			if d < best_d:
+				best_d = d
+				best = n
+	return best
+
+func _actor_of(p: Vector2, faction: String) -> Actor:
 	var best: Actor = null
 	var best_d := PICK_RADIUS
 	for a in (Actor.ctx.actors if Actor.ctx else members):
 		if not is_instance_valid(a) or a.downed:
 			continue
-		if (a.faction != "party") != want_hostile:
+		if a.faction != faction:
 			continue
 		var d: float = (a.global_position + Vector2(0, -22)).distance_to(p)
 		if d < best_d:
@@ -76,9 +94,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			if not targeting.is_empty():
 				targeting = {}
 				return
-			var foe := actor_at(get_global_mouse_position(), true)
+			var mp := get_global_mouse_position()
+			var foe := actor_at(mp, true)
+			var folk := villager_at(mp) if foe == null else null
+			var node := gather_node_at(mp) if foe == null and folk == null else null
 			if foe:
 				order_attack(foe, mb.shift_pressed)
+			elif folk:
+				order_interact(folk, folk.cell, 2.0, mb.shift_pressed)
+			elif node:
+				order_interact(node, node.data.cell, 1.5, mb.shift_pressed)
 			else:
 				order_move_to(mouse_cell(), mb.shift_pressed)
 	elif event is InputEventMouseMotion and _dragging:
@@ -141,6 +166,15 @@ func order_move_to(target: Vector2i, queue := false) -> int:
 			ok += 1
 	queue_redraw()
 	return ok
+
+## The lead selected member walks over and interacts (talk, gather).
+func order_interact(node: Node, at: Vector2i, reach: float, queue := false) -> void:
+	var m := leader()
+	if m.downed:
+		return
+	m.issue({"type": "interact", "node": node, "cell": at, "range": reach}, queue)
+	marker_cell = at
+	_marker_t = 0.0
 
 func order_attack(foe: Actor, queue := false) -> void:
 	for m in selection:

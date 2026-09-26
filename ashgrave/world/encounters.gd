@@ -3,6 +3,7 @@ extends RefCounted
 ## Deterministic creature camps per chunk: same seed, same camps, same place.
 
 const SAFE_RADIUS := 18.0   # no camps this close to the starting point
+const VILLAGE_RADIUS := 16.0 # nor this close to a village
 
 static func camps_for_chunk(world: WorldGen, ch: Vector2i) -> Array:
 	var rng := RandomNumberGenerator.new()
@@ -14,6 +15,8 @@ static func camps_for_chunk(world: WorldGen, ch: Vector2i) -> Array:
 	for i in n:
 		var c := ch * WorldGen.CHUNK + Vector2i(rng.randi_range(3, WorldGen.CHUNK - 4), rng.randi_range(3, WorldGen.CHUNK - 4))
 		if not _open(world, c) or Vector2(c - spawn).length() < SAFE_RADIUS:
+			continue
+		if not world.village_near(c, VILLAGE_RADIUS).is_empty():
 			continue
 		var type := _type_for(world.terrain_at(c), rng)
 		var count := rng.randi_range(1, 2) if type == "risen" else rng.randi_range(1, 3)

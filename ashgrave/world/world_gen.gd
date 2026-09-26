@@ -62,9 +62,33 @@ func terrain_at(c: Vector2i) -> int:
 		return Terrain.FOREST
 	return Terrain.MOOR
 
+var _villages: Array = []
+var _structures := {}
+var _villages_ready := false
+
+## Settlements are generated lazily from the terrain, then block their building cells.
+func villages() -> Array:
+	if not _villages_ready:
+		_villages_ready = true
+		_villages = Settlements.generate(self)
+		_structures = Settlements.structure_cells(_villages)
+	return _villages
+
+func structure_at(c: Vector2i) -> Dictionary:
+	villages()
+	return _structures.get(c, {})
+
+func village_near(c: Vector2i, radius: float) -> Dictionary:
+	for v in villages():
+		if Vector2(v.center - c).length() <= radius:
+			return v
+	return {}
+
 func walkable(c: Vector2i) -> bool:
 	var t := terrain_at(c)
-	return t != Terrain.WATER and t != Terrain.ROCK
+	if t == Terrain.WATER or t == Terrain.ROCK:
+		return false
+	return structure_at(c).is_empty()
 
 ## Movement cost multiplier for pathing.
 func cost(c: Vector2i) -> float:
@@ -80,6 +104,8 @@ func has_tree(c: Vector2i) -> bool:
 	var t := terrain_at(c)
 	if t != Terrain.FOREST and t != Terrain.FEN:
 		return false
+	if not village_near(c, Settlements.CLEAR_RADIUS).is_empty():
+		return false
 	var r := _hash01(c)
 	return r < (0.28 if t == Terrain.FOREST else 0.06)
 
@@ -91,6 +117,21 @@ func spawn_cell() -> Vector2i:
 	return _spawn
 
 func _find_spawn() -> Vector2i:
+	var vs := villages()
+	if not vs.is_empty():
+		var mid := Vector2i(SIZE / 2, SIZE / 2)
+		var best: Dictionary = vs[0]
+		for v in vs:
+			if Vector2(v.center - mid).length() < Vector2(best.center - mid).length():
+				best = v
+		for r in range(0, 6):
+			for dx in range(-r, r + 1):
+				var c: Vector2i = best.center + Vector2i(dx, 8 + r)
+				if walkable(c) and walkable(c + Vector2i(1, 0)) and walkable(c + Vector2i(0, 1)) and not has_tree(c):
+					return c
+	return _find_open_spawn()
+
+func _find_open_spawn() -> Vector2i:
 	var center := Vector2i(SIZE / 2, SIZE / 2)
 	for radius in range(0, SIZE / 2):
 		for dx in range(-radius, radius + 1):

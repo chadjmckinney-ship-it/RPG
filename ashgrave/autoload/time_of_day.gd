@@ -3,12 +3,16 @@ extends Node
 
 const DAY_SECONDS := 480.0
 var time := 8.0 / 24.0  # fraction of a day, starts 08:00
+var day := 1
 var _last_hour := -1
 
 func _process(delta: float) -> void:
 	if TacticalPause.paused:
 		return
-	time = fmod(time + delta / DAY_SECONDS, 1.0)
+	time += delta / DAY_SECONDS
+	if time >= 1.0:
+		time -= 1.0
+		day += 1
 	var h := hour()
 	if h != _last_hour:
 		_last_hour = h
