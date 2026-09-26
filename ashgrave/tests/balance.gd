@@ -3,7 +3,7 @@ extends SceneTree
 ##   godot --headless --path . -s res://tests/balance.gd   (RUNS=n to change repetitions)
 
 const SCENARIOS := [
-	# [label, party ids, gear, enemies]
+	# [label, party ids, gear, enemies, optional hour (default noon)]
 	["Maren solo vs hound", ["maren"], "none", ["hound"]],
 	["Maren solo vs crows", ["maren"], "none", ["crows"]],
 	["Maren solo vs cultist", ["maren"], "none", ["cultist"]],
@@ -20,6 +20,8 @@ const SCENARIOS := [
 	["Party vs 2 revenants", ["maren", "oswin", "ketta"], "none", ["revenant", "revenant"]],
 	["Geared vs Drowned Lord", ["maren", "oswin", "ketta"], "iron", ["barrow_lord", "risen", "risen"]],
 	["Geared vs Ashen Knight", ["maren", "oswin", "ketta"], "iron", ["ash_knight", "ghoul"]],
+	["Geared vs Drowned Lord night", ["maren", "oswin", "ketta"], "iron", ["barrow_lord", "risen", "risen"], 23],
+	["Geared vs Ashen Knight night", ["maren", "oswin", "ketta"], "iron", ["ash_knight", "ghoul"], 23],
 ]
 const GEAR := {"iron": {"maren": ["iron-blade", "hide-jerkin"], "oswin": ["iron-blade", "iron-mail"], "ketta": ["yew-bow", "hide-jerkin"]}}
 
@@ -51,6 +53,8 @@ func _initialize() -> void:
 func _fight(gs, sc: Array) -> Dictionary:
 	gs.reset()
 	gs.recruited = sc[1].duplicate()
+	# Every fight starts at a fixed hour; otherwise the clock drifts into night across scenarios.
+	root.get_node("TimeOfDay").time = (sc[4] if sc.size() > 4 else 12) / 24.0
 	var main = load("res://main.tscn").instantiate()
 	main.spawn_encounters = false
 	root.add_child(main)

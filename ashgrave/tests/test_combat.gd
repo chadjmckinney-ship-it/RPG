@@ -175,3 +175,23 @@ func test_encounters_deterministic_and_valid() -> void:
 					check(w.walkable(c) and not w.has_tree(c), "camp creature on blocked cell %s" % c)
 					check(Vector2(c - spawn).length() >= Encounters.SAFE_RADIUS, "camp too close to spawn at %s" % c)
 	check(total > 20, "world is nearly empty of creatures (%d)" % total)
+
+func test_night_bonus_scales_damage_not_attack() -> void:
+	var tod = tree.root.get_node("TimeOfDay")
+	var saved: float = tod.time
+	var a := Actor.new()
+	a.attack = 16.0
+	a.night_bonus = 0.4
+	var t := Actor.new()
+	t.defense = 8.0
+	var hits := {}
+	for hour in [12, 0]:
+		tod.time = hour / 24.0
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 3
+		hits[hour] = Effect.damage(a, t, 1.0, rng).amount
+	tod.time = saved
+	var expect: float = hits[12] * 1.4   # midnight: no daylight, full bonus
+	check(absf(hits[0] - expect) <= 1.0, "night hit %s should be day hit %s x1.4" % [hits[0], hits[12]])
+	a.free()
+	t.free()

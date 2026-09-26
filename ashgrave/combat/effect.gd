@@ -10,11 +10,11 @@ static func damage(attacker, target, power: float = 1.0, rng: RandomNumberGenera
 	if rng == null:
 		r.randomize()
 	var atk: float = attacker.attack
-	# The restless dead hit harder after dark.
-	if attacker.night_bonus > 0.0:
-		atk *= 1.0 + attacker.night_bonus * (1.0 - TimeOfDay.daylight())
 	var raw: float = atk * power * 1.25 - float(target.defense) * 0.6
 	raw = maxf(1.0, raw) * r.randf_range(0.9, 1.1)
+	# The restless dead hit harder after dark (on the damage dealt, so armour doesn't magnify it).
+	if attacker.night_bonus > 0.0:
+		raw *= 1.0 + attacker.night_bonus * (1.0 - TimeOfDay.daylight())
 	var crit := r.randf() < CRIT_CHANCE
 	if crit:
 		raw *= CRIT_MULT
