@@ -15,6 +15,7 @@ func on_interact(who) -> void:
 	if got.is_empty():
 		Events.combat_message.emit("%s is picked clean. It will recover in a day or two." % display_name())
 	else:
+		Audio.play("gather")
 		Events.combat_message.emit("%s gathers %d %s." % [who.display_name, got.count, Items.item_name(got.item)])
 	queue_redraw()
 

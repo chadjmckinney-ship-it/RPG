@@ -247,6 +247,7 @@ func _face(p: Vector2) -> void:
 
 func _strike(tgt: Actor) -> void:
 	_lunge = 0.18
+	Audio.play("bow" if ranged else "swing")
 	if ranged and ctx and ctx.fx:
 		ctx.fx.tracer(global_position + Vector2(0, -26), tgt.global_position + Vector2(0, -20), Color(0.9, 0.85, 0.7))
 	if tgt.evasion > 0.0 and randf() < tgt.evasion:
@@ -308,6 +309,7 @@ func take_damage(amount: float, source: Actor = null, crit := false) -> void:
 		amount = maxf(1.0, roundf(amount * (1.0 - statuses.guard.dr)))
 	hp -= amount
 	_flash = 0.15
+	Audio.play("hit")
 	_floaters.append({"text": ("%d!" if crit else "%d") % int(amount), "color": Color(1, 0.85, 0.3) if crit else (Color(1, 0.45, 0.4) if faction == "party" else Color(1, 1, 1)), "t": 0.0})
 	if source:
 		_on_damaged(source)
@@ -320,6 +322,8 @@ func heal(amount: float) -> void:
 		return
 	var before := hp
 	hp = minf(max_hp, hp + amount)
+	if hp > before and amount >= 5.0:
+		Audio.play("heal")
 	if hp > before:
 		_floaters.append({"text": "+%d" % int(hp - before), "color": Color(0.5, 1, 0.55), "t": 0.0})
 
@@ -352,6 +356,7 @@ func _on_damaged(_source: Actor) -> void:
 
 func _go_down(source: Actor) -> void:
 	downed = true
+	Audio.play("death", 0.15)
 	orders.clear()
 	current = null
 	path.clear()

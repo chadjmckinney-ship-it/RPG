@@ -238,6 +238,7 @@ func _dialogue() -> void:
 func _pick(i: int) -> void:
 	if not dialogue.choose(i):
 		return
+	Audio.play("click", 0.0)
 	match dialogue.result:
 		"end": close_all()
 		"trade": open_trade(dialogue.npc)
@@ -266,6 +267,7 @@ func _trade() -> void:
 		var price := Factions.buy_price(Items.get_def(id).value, rep)
 		var buy := func():
 			if inv.remove("coin", price):
+				Audio.play("coin", 0.0)
 				inv.add(id)
 				Events.combat_message.emit("Bought %s." % Items.item_name(id))
 			refresh()
@@ -278,6 +280,7 @@ func _trade() -> void:
 		var price := Factions.sell_price(Items.get_def(id).get("value", 1), rep)
 		var sell := func():
 			if inv.remove(id):
+				Audio.play("coin", 0.0)
 				inv.add("coin", price)
 			refresh()
 		_row("%s ×%d — %d coin each" % [Items.item_name(id), inv.count(id), price], "", "Sell", sell)

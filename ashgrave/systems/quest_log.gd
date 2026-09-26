@@ -39,6 +39,7 @@ static func advance(id: String) -> void:
 	if q.stage >= q.stages.size():
 		q.status = "done"
 		Events.combat_message.emit("Quest complete: %s" % q.title)
+		Audio.play("quest", 0.0)
 		ScriptOps.run_all(q.get("reward", []))
 		if GameState.tracked == id:
 			GameState.tracked = _next_active()

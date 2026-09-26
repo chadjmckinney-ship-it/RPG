@@ -11,6 +11,7 @@ Events="*res://autoload/events.gd"
 GameState="*res://autoload/game_state.gd"
 TimeOfDay="*res://autoload/time_of_day.gd"
 TacticalPause="*res://autoload/tactical_pause.gd"
+Audio="*res://autoload/audio.gd"
 
 [display]
 window/size/viewport_width=1280

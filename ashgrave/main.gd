@@ -166,6 +166,8 @@ func _on_creature_died(c: Actor) -> void:
 		GameState.change_rep(v.faction, 4)
 
 func _on_enemy_spotted(c: Node) -> void:
+	if not in_combat:
+		Audio.play("alarm", 0.0)
 	if not in_combat and TacticalPause.settings.on_enemy_spotted:
 		log_msg("%s spotted!" % c.display_name)
 		TacticalPause.set_paused(true)
@@ -379,6 +381,7 @@ func _process(delta: float) -> void:
 	if TacticalPause.paused:
 		return
 	_update_combat_state(delta)
+	Audio.set_music("combat" if in_combat else ("day" if TimeOfDay.daylight() > 0.35 else "night"))
 	_quest_timer -= delta
 	if _quest_timer <= 0.0:
 		_quest_timer = 0.5
