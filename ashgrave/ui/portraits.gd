@@ -1,9 +1,11 @@
 class_name Portraits
 extends RefCounted
 ## Pixel busts cut from each character's own LPC sprite (head and shoulders, facing the
-## viewer), so a portrait always matches the figure on the field, gear included.
+## viewer), so a portrait always matches the figure on the field, gear included. Maren's comes
+## from her 3D model instead (HERO, rendered by tools/render_hero.py).
 
 const BUST := Rect2(18, 9, 28, 28)   # inside a 64x64 south-facing idle frame
+const HERO := "hero"
 const BACK := Color("1c1814")
 const RIM := Color("2c241b")
 ## Backdrop tint per allegiance: [top, bottom].
@@ -14,13 +16,16 @@ const BACKDROPS := {
 	"hollow": [Color("26341e"), Color("0e140b")],
 }
 
-## The LPC character id an actor is currently drawn with ("" if it has no LPC sprite).
+## The LPC character id an actor is currently drawn with, HERO for Maren's rendered model,
+## or "" if it has neither.
 static func character_of(actor: Node) -> String:
 	if actor == null or not is_instance_valid(actor):
 		return ""
 	var s = actor.get("sprite")
 	if s is LpcSprite:
 		return s.character
+	if s is HeroSprite:
+		return HERO
 	return ""
 
 ## Draws the bust of LPC character `char_id` into r (best at 28 px multiples: 56, 84, 112).
@@ -30,6 +35,12 @@ static func draw(ci: CanvasItem, char_id: String, r: Rect2, backdrop := "party")
 	for i in 8:
 		ci.draw_rect(Rect2(r.position.x, r.position.y + r.size.y * i / 8.0, r.size.x, r.size.y / 8.0 + 1.0), cols[0].lerp(cols[1], i / 7.0))
 	ci.draw_rect(Rect2(r.position + r.size * Vector2(0.18, 0.12), r.size * Vector2(0.64, 0.5)), Color(1, 0.9, 0.7, 0.05))
+	if char_id == HERO:
+		var face := LpcSprite.tex(HeroSprite.PORTRAIT)
+		if face:
+			ci.draw_texture_rect(face, r, false)
+		_frame(ci, r)
+		return
 	var tex := LpcSprite.tex("res://art/lpc/chars/%s.png" % char_id) if char_id != "" else null
 	if tex == null:
 		return

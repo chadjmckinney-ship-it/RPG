@@ -127,9 +127,17 @@ func _on_damaged(source: Actor) -> void:
 	if current == null and orders.is_empty() and source and source.alive():
 		issue({"type": "attack", "target": source, "auto": true})
 
-## Pick the LPC outfit and weapon art that match current equipment.
+## Pick the art that matches current equipment: Maren's rendered model, or an LPC outfit and weapon.
 func refresh_look() -> void:
 	if companion_id == "":
+		return
+	var hero := ArtMap.hero_variant(companion_id, equipment)
+	if hero != "":
+		if sprite is HeroSprite and sprite.variant == hero:
+			return
+		var h := HeroSprite.new()
+		h.setup(hero)
+		set_sprite(h)
 		return
 	var look_ids := ArtMap.member_look(companion_id, equipment)
 	if sprite is LpcSprite and sprite.character == look_ids[0] and sprite.weapon == look_ids[1]:

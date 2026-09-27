@@ -29,6 +29,17 @@ static func make_creature(type: String) -> CharSprite:
 	s.self_modulate = a.get("tint", Color.WHITE)
 	return s
 
+## Hero art (tools/render_hero.py) for a party member's weapon: the atlas variant, or "" if
+## they are drawn with LPC art. Only Maren has a rendered model; weapons without their own
+## render fall back to her longsword.
+static func hero_variant(id: String, equipment: Dictionary) -> String:
+	if id != "maren":
+		return ""
+	var weapon: String = WEAPON_ART.get(equipment.get("weapon", ""), DEFAULT_WEAPON.get(id, ""))
+	if HeroSprite.has_art(weapon):
+		return weapon
+	return "longsword" if HeroSprite.has_art("longsword") else ""
+
 ## LPC look for a party member given their equipment.
 static func member_look(id: String, equipment: Dictionary) -> Array:
 	var suffix: String = ARMOR_ART.get(equipment.get("armor", ""), "")

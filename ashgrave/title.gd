@@ -65,9 +65,16 @@ func _ready() -> void:
 	foot.add_theme_color_override("font_color", UiTheme.MUTED)
 	col.add_child(foot)
 	# Maren herself, large, standing over the map
-	var hero := LpcSprite.new()
-	hero.setup("maren", "longsword")
-	hero.scale = Vector2(2.5, 2.5)
+	var hero: CharSprite
+	var variant := ArtMap.hero_variant("maren", {})
+	if variant != "":
+		hero = HeroSprite.new()
+		hero.setup(variant)
+		hero.scale = Vector2(2.0, 2.0)
+	else:
+		hero = LpcSprite.new()
+		hero.setup("maren", "longsword")
+		hero.scale = Vector2(2.5, 2.5)
 	hero.position = Vector2(1080, 640)
 	hero.face(Vector2(-0.3, 1))
 	hero.play("idle", true)

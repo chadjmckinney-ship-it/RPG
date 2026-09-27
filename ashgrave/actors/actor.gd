@@ -54,7 +54,7 @@ var hovered := false:
 			_refresh_rim()
 
 func _refresh_rim() -> void:
-	if sprite is LpcSprite:
+	if sprite and "rim" in sprite:
 		sprite.rim = Color(1.0, 0.8, 0.35, 0.9) if selected else (Color(0.95, 0.25, 0.2, 0.9) if hovered else Color(0, 0, 0, 0))
 
 var _floaters: Array = []
