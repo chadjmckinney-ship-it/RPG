@@ -1,0 +1,97 @@
+{
+ "cell": 32,
+ "icons": {
+  "coin": [
+   0,
+   0
+  ],
+  "hide": [
+   32,
+   0
+  ],
+  "grave-dust": [
+   64,
+   0
+  ],
+  "lurker-gland": [
+   96,
+   0
+  ],
+  "bone-charm": [
+   128,
+   0
+  ],
+  "bitterroot": [
+   160,
+   0
+  ],
+  "iron-ore": [
+   192,
+   0
+  ],
+  "deadwood": [
+   224,
+   0
+  ],
+  "ashbloom": [
+   0,
+   32
+  ],
+  "tithe-ledger": [
+   32,
+   32
+  ],
+  "sealed-letter": [
+   64,
+   32
+  ],
+  "bandage": [
+   96,
+   32
+  ],
+  "antivenom": [
+   128,
+   32
+  ],
+  "blight-draught": [
+   160,
+   32
+  ],
+  "fen-tonic": [
+   192,
+   32
+  ],
+  "militia-spear": [
+   224,
+   32
+  ],
+  "iron-blade": [
+   0,
+   64
+  ],
+  "barrow-blade": [
+   32,
+   64
+  ],
+  "ashen-greatsword": [
+   64,
+   64
+  ],
+  "yew-bow": [
+   96,
+   64
+  ],
+  "hide-jerkin": [
+   128,
+   64
+  ],
+  "iron-mail": [
+   160,
+   64
+  ],
+  "penitent-robes": [
+   192,
+   64
+  ]
+ }
+}
