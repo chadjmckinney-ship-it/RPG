@@ -20,24 +20,37 @@ OUT = os.path.join(GAME, "art", "lpc")
 REPO = "https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator.git"
 
 # name, frame size, frames, direction rows, source file (body sheet), custom-animation names
+# Character atlases hold the 64 px animations only. Weapon atlases hold the same rows plus BIG:
+# oversize (192 px) weapon swings, drawn over the body's matching 64 px pose (see "body" in meta).
 LAYOUT = [
     ("idle", 64, 2, 4, "idle", None),
     ("walk", 64, 9, 4, "walk", None),
     ("slash", 64, 6, 4, "slash", None),
-    ("slash_big", 192, 6, 4, "slash", ("slash_oversize", "slash_128")),
     ("thrust", 64, 8, 4, "thrust", None),
     ("shoot", 64, 13, 4, "shoot", None),
     ("cast", 64, 7, 4, "spellcast", None),
     ("hurt", 64, 6, 1, "hurt", None),
+    ("run", 64, 8, 4, "run", None),
+    ("combat_idle", 64, 2, 4, "combat_idle", None),
 ]
+BIG = [
+    ("slash_big", 192, 6, 4, "slash", ("slash_oversize", "slash_128")),
+    ("slash_rev_big", 192, 6, 4, "slash", ("slash_reverse_oversize",)),
+    ("thrust_big", 192, 8, 4, "thrust", ("thrust_oversize",)),
+]
+# body pose under each oversize weapon animation, and whether it plays backwards
+BIG_BODY = {"slash_big": ["slash", False], "slash_rev_big": ["slash", True], "thrust_big": ["thrust", False]}
 WIDTH = max(size * frames for _, size, frames, _, _, _ in LAYOUT)
+BIG_WIDTH = max(WIDTH, max(size * frames for _, size, frames, _, _, _ in BIG))
+# Layers without these animations reuse walk frames: run <- walk 1..8, stances <- walk 0.
+FROM_WALK = {"run", "combat_idle", "idle"}
 
 
-def layout_json():
+def layout_json(rows=None):
     y, out = 0, {}
-    for name, size, frames, rows, _, _ in LAYOUT:
-        out[name] = {"y": y, "size": size, "frames": frames, "rows": rows}
-        y += size * rows
+    for name, size, frames, nrows, _, _ in (rows or LAYOUT):
+        out[name] = {"y": y, "size": size, "frames": frames, "rows": nrows}
+        y += size * nrows
     return out, y
 
 
@@ -136,12 +149,13 @@ def recolor(img, cmap, tint=None):
     return img
 
 
-def bake(lpc, recipe_layers, body, out_png, credits):
-    """Composite the given layers into one atlas following LAYOUT."""
-    layout, height = layout_json()
-    atlas = Image.new("RGBA", (WIDTH, height), (0, 0, 0, 0))
+def bake(lpc, recipe_layers, body, out_png, credits, rows_spec=None, width=None):
+    """Composite the given layers into one atlas following rows_spec (default LAYOUT)."""
+    rows_spec = rows_spec or LAYOUT
+    layout, height = layout_json(rows_spec)
+    atlas = Image.new("RGBA", (width or WIDTH, height), (0, 0, 0, 0))
     lpc.fetch([l["path"] for l in recipe_layers])
-    for name, size, frames, rows, src, customs in LAYOUT:
+    for name, size, frames, rows, src, customs in rows_spec:
         y0 = layout[name]["y"]
         sheet = Image.new("RGBA", (size * frames, size * rows), (0, 0, 0, 0))
         drawn = False
@@ -161,8 +175,10 @@ def bake(lpc, recipe_layers, body, out_png, credits):
                     # This item draws its own oversize attack; skip its standard layers for this animation.
                     continue
                 f = lpc.file(l["path"], src, l["variant"])
-                if not f and name == "idle":
-                    f = lpc.file(l["path"], "walk", l["variant"])  # standing frame fallback
+                from_walk = False
+                if not f and name in FROM_WALK:
+                    f = lpc.file(l["path"], "walk", l["variant"])  # borrow walk frames
+                    from_walk = True
                 if not f:
                     continue
                 img = load_rgba(os.path.join(lpc.root, "spritesheets", f))
@@ -181,8 +197,8 @@ def bake(lpc, recipe_layers, body, out_png, credits):
                     continue
                 for col in range(frames):
                     c = col if col < src_frames else 0
-                    if name == "idle" and src_frames > frames and "walk" in f:
-                        c = 0
+                    if not l["custom"] and (from_walk or (name == "idle" and src_frames > frames and "walk" in f)):
+                        c = min(col + 1, src_frames - 1) if name == "run" else 0
                     tile = img.crop((c * layer_size, row * layer_size, (c + 1) * layer_size, (row + 1) * layer_size))
                     sheet.alpha_composite(tile, (col * size + offset, row * size + offset))
                     drawn = True
@@ -190,6 +206,71 @@ def bake(lpc, recipe_layers, body, out_png, credits):
             atlas.alpha_composite(sheet, (0, y0))
     os.makedirs(os.path.dirname(out_png), exist_ok=True)
     atlas.save(out_png, optimize=True)
+
+
+TOPS = {  # top name -> (layer def, uses a variant instead of a recolour)
+    "robe": ("torso_clothes_robe", True), "tabard": ("torso_jacket_tabard", True), "longsleeve": ("torso_clothes_longsleeve", False),
+    "leather": ("torso_armour_leather", False), "vest": ("torso_clothes_vest", True), "tunic": ("torso_clothes_tunic", True),
+}
+
+
+def pick_variant(lpc, def_name, want, rng):
+    """A variant of a variant-only item that matches the wanted colour name, if there is one."""
+    variants = (lpc.defs.get(def_name) or {}).get("variants") or []
+    for v in variants:
+        if v == want or v.replace(" ", "_") == want:
+            return v
+    near = [v for v in variants if want in v]
+    return near[0] if near else (rng.choice(variants) if variants else None)
+
+
+def expand_villagers(lpc, recipes):
+    """Seeded villagers: count_per_faction per faction, named villager_<faction>_<n>."""
+    import random
+    spec = recipes.get("villagers")
+    if not spec:
+        return
+    for faction, f in spec["factions"].items():
+        rng = random.Random("villagers:" + faction)
+        for n in range(spec["count_per_faction"]):
+            female = n % 2 == 0
+            skin = rng.choice(spec["skins"])
+            cloth = rng.choice(f["cloth"])
+            cloth2 = rng.choice([c for c in f["cloth"] if c != cloth] or f["cloth"])
+            hair_col = rng.choice(spec["hair_colors"])
+            layers = [{"def": "body", "color": skin},
+                      {"def": "heads_human_female_small" if female else "heads_human_male_small", "color_1": skin,
+                       "color_2": rng.choice(["blue", "green", "brown", "gray"])},
+                      {"def": "feet_boots_basic" if rng.random() < 0.5 else "feet_shoes_basic", "color": rng.choice(["brown", "black", "charcoal"])}]
+            if female and rng.random() < 0.6:
+                layers.append({"def": "legs_skirts_plain", "color": cloth2})
+            else:
+                layers.append({"def": "legs_pants", "color": cloth2 if rng.random() < 0.5 else "charcoal"})
+            top = rng.choice(f["tops"])
+            tdef, variant_only = TOPS[top]
+            if top in ("leather", "tabard", "vest"):
+                layers.append({"def": "torso_clothes_longsleeve", "color": rng.choice(["white", "gray", "charcoal"])})
+            if variant_only:
+                v = pick_variant(lpc, tdef, cloth, rng)
+                layers.append({"def": tdef, "variant": v} if v else {"def": "torso_clothes_longsleeve", "color": cloth})
+            elif tdef == "torso_armour_leather":
+                layers.append({"def": tdef, "color_1": "leather"})
+            else:
+                layers.append({"def": tdef, "color": cloth})
+            hood = False
+            for extra in f.get("extra", []):
+                if rng.random() < 0.5:
+                    e = {k: (cloth if v == "$cloth" else v) for k, v in extra.items()}
+                    hood = hood or e["def"].startswith("hat_")
+                    layers.append(e)
+            if not hood:
+                hair = rng.choice(spec["female_hair"] if female else spec["male_hair"])
+                layers.append({"def": hair, "color": hair_col})
+            if not female:
+                beard = rng.choice(spec["beards"])
+                if beard:
+                    layers.append({"def": beard, "color": hair_col})
+            recipes["characters"]["villager_%s_%d" % (faction, n)] = {"body": "female" if female else "male", "weapon": "", "layers": layers}
 
 
 def main():
@@ -202,6 +283,7 @@ def main():
         subprocess.run(["git", "-C", args.lpc, "sparse-checkout", "set", "sheet_definitions", "palette_definitions"], check=True)
     lpc = Lpc(args.lpc)
     recipes = json.load(open(os.path.join(HERE, "lpc_recipes.json")))
+    expand_villagers(lpc, recipes)
     credits = set()
     layout, height = layout_json()
     # Fetch every needed folder first: baking right after a partial fetch can miss files.
@@ -217,15 +299,18 @@ def main():
                 if not l["custom"] and not lpc.file(l["path"], "walk", l["variant"]) and os.path.isdir(os.path.join(lpc.root, "spritesheets", l["path"])):
                     print("WARNING: %s (%s) has no walk sheet at %s" % (item["def"], l["variant"], l["path"]))
     lpc.fetch([l["path"] for l in all_layers])
-    meta = {"layout": layout, "width": WIDTH, "height": height, "characters": {}, "weapons": {}}
+    big_layout, big_height = layout_json(LAYOUT + BIG)
+    meta = {"layout": layout, "width": WIDTH, "height": height, "characters": {}, "weapons": {},
+            "weapon_layout": big_layout, "weapon_width": BIG_WIDTH, "weapon_height": big_height, "big_body": BIG_BODY}
     for wid, w in recipes["weapons"].items():
         for body in ("female", "male"):
             if args.only and args.only not in wid:
                 continue
             ls = lpc.layers(w, body)
-            bake(lpc, [l for l in ls if l["z"] < 10], body, os.path.join(OUT, "weapons", "%s_%s_behind.png" % (wid, body)), credits)
-            bake(lpc, [l for l in ls if l["z"] >= 10], body, os.path.join(OUT, "weapons", "%s_%s_front.png" % (wid, body)), credits)
-        meta["weapons"][wid] = {"attack": w.get("attack", "slash_big")}
+            bake(lpc, [l for l in ls if l["z"] < 10], body, os.path.join(OUT, "weapons", "%s_%s_behind.png" % (wid, body)), credits, LAYOUT + BIG, BIG_WIDTH)
+            bake(lpc, [l for l in ls if l["z"] >= 10], body, os.path.join(OUT, "weapons", "%s_%s_front.png" % (wid, body)), credits, LAYOUT + BIG, BIG_WIDTH)
+        attacks = w.get("attacks", [w.get("attack", "slash")])
+        meta["weapons"][wid] = {"attack": attacks[0], "attacks": attacks}
         print("weapon", wid)
     for cid, c in recipes["characters"].items():
         if args.only and args.only not in cid:

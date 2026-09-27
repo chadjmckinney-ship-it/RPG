@@ -72,3 +72,36 @@ func test_ui_theme_uses_the_pixel_art() -> void:
 	check(t.default_font != null and t.default_font.resource_path.ends_with("Jersey10.ttf"), "body font isn't Jersey 10")
 	check(t.get_stylebox("panel", "PanelContainer") is StyleBoxTexture, "panels aren't using the pixel frame")
 	check(UiTheme.title_font() != null, "title font missing")
+
+func test_new_animations_and_weapon_atlases() -> void:
+	var meta := LpcSprite.meta()
+	for a in ["run", "combat_idle"]:
+		check(meta.layout.has(a), "layout lacks %s" % a)
+	for a in ["slash_big", "slash_rev_big", "thrust_big"]:
+		check(meta.weapon_layout.has(a) and meta.big_body.has(a), "weapon layout lacks %s" % a)
+	for w in meta.weapons:
+		var tex := LpcSprite.tex("res://art/lpc/weapons/%s_female_front.png" % w)
+		check(tex != null and tex.get_width() == int(meta.weapon_width) and tex.get_height() == int(meta.weapon_height), "%s weapon atlas has the wrong size" % w)
+		for move in meta.weapons[w].attacks:
+			check(meta.weapon_layout.has(move), "%s attack %s has no rows" % [w, move])
+	var s := LpcSprite.new()
+	s.setup("maren", "longsword")
+	var seen := {}
+	for i in 3:
+		s.play("attack", true)
+		seen[s.source("attack")] = true
+	check(seen.size() == 3, "longsword attacks should rotate through three moves, got %s" % [seen.keys()])
+	s.play("walk")
+	check(s.source("run") == "run" and s.source("ready") == "combat_idle", "run / stance not mapped")
+	s.free()
+
+func test_villagers_vary_by_faction() -> void:
+	var meta := LpcSprite.meta()
+	for f in ["church", "companies", "hollow"]:
+		var n: int = meta.characters.keys().filter(func(k): return k.begins_with("villager_%s_" % f)).size()
+		check(n >= 4, "only %d villager looks for %s" % [n, f])
+	var v := Villager.new()
+	v.village = {"faction": "church", "id": "v0_0"}
+	v.npc_id = "v0_0:villager1"
+	check(ArtMap.villager_look(v)[0].begins_with("villager_church_"), "church villager not dressed for the church")
+	v.free()

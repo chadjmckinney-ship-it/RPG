@@ -8,14 +8,16 @@ uniform float front_y = -1.0;
 
 varying vec2 world;
 varying float origin_y;
+varying vec4 tint;   // vertex colour; fragment COLOR already includes the texture
 
 void vertex() {
+	tint = COLOR;
 	world = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
 	origin_y = MODEL_MATRIX[3].y;
 }
 
 void fragment() {
-	vec4 c = texture(TEXTURE, UV) * COLOR;
+	vec4 c = texture(TEXTURE, UV) * tint;
 	for (int i = 0; i < member_count; i++) {
 		if (front_y >= 0.0 && origin_y < members[i].y) {
 			continue;   // this sprite is behind the member; the member is drawn over it anyway

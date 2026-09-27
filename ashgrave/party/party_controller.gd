@@ -225,8 +225,18 @@ func _free_near(c: Vector2i, taken: Dictionary) -> Vector2i:
 					return n
 	return c
 
+var _hovered: Actor = null
+
 func _process(delta: float) -> void:
 	_marker_t += delta
+	# red rim on the enemy under the cursor
+	var foe := actor_at(get_global_mouse_position(), true) if Actor.ctx else null
+	if foe != _hovered:
+		if is_instance_valid(_hovered):
+			_hovered.hovered = false
+		_hovered = foe
+		if foe:
+			foe.hovered = true
 	queue_redraw()
 
 func _draw() -> void:

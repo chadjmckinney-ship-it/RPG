@@ -44,5 +44,10 @@ static func villager_look(v) -> Array:
 	match v.job:
 		"smith": return ["smith", ""]
 		"keeper": return ["keeper", ""]
-	var pool := ["villager_f1", "villager_m1", "villager_f2", "villager_m2"]
+	# generated villagers dressed for the village's faction (tools/import_lpc.py expand_villagers)
+	var faction: String = v.village.get("faction", "hollow") if v.get("village") is Dictionary else "hollow"
+	var pool: Array = LpcSprite.meta().characters.keys().filter(func(k): return k.begins_with("villager_%s_" % faction))
+	if pool.is_empty():
+		pool = ["villager_f1", "villager_m1", "villager_f2", "villager_m2"]
+	pool.sort()
 	return [pool[absi(hash(v.npc_id)) % pool.size()], ""]

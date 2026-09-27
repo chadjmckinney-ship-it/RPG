@@ -18,39 +18,45 @@
    "frames": 6,
    "rows": 4
   },
-  "slash_big": {
-   "y": 768,
-   "size": 192,
-   "frames": 6,
-   "rows": 4
-  },
   "thrust": {
-   "y": 1536,
+   "y": 768,
    "size": 64,
    "frames": 8,
    "rows": 4
   },
   "shoot": {
-   "y": 1792,
+   "y": 1024,
    "size": 64,
    "frames": 13,
    "rows": 4
   },
   "cast": {
-   "y": 2048,
+   "y": 1280,
    "size": 64,
    "frames": 7,
    "rows": 4
   },
   "hurt": {
-   "y": 2304,
+   "y": 1536,
    "size": 64,
    "frames": 6,
    "rows": 1
+  },
+  "run": {
+   "y": 1600,
+   "size": 64,
+   "frames": 8,
+   "rows": 4
+  },
+  "combat_idle": {
+   "y": 1856,
+   "size": 64,
+   "frames": 2,
+   "rows": 4
   }
  },
- "width": 1152,
- "height": 2368,
+ "width": 832,
+ "height": 2112,
  "characters": {
   "maren": {
    "body": "female",
@@ -187,29 +193,215 @@
   "crows": {
    "body": "male",
    "weapon": "dagger"
+  },
+  "villager_church_0": {
+   "body": "female",
+   "weapon": ""
+  },
+  "villager_church_1": {
+   "body": "male",
+   "weapon": ""
+  },
+  "villager_church_2": {
+   "body": "female",
+   "weapon": ""
+  },
+  "villager_church_3": {
+   "body": "male",
+   "weapon": ""
+  },
+  "villager_church_4": {
+   "body": "female",
+   "weapon": ""
+  },
+  "villager_church_5": {
+   "body": "male",
+   "weapon": ""
+  },
+  "villager_companies_0": {
+   "body": "female",
+   "weapon": ""
+  },
+  "villager_companies_1": {
+   "body": "male",
+   "weapon": ""
+  },
+  "villager_companies_2": {
+   "body": "female",
+   "weapon": ""
+  },
+  "villager_companies_3": {
+   "body": "male",
+   "weapon": ""
+  },
+  "villager_companies_4": {
+   "body": "female",
+   "weapon": ""
+  },
+  "villager_companies_5": {
+   "body": "male",
+   "weapon": ""
+  },
+  "villager_hollow_0": {
+   "body": "female",
+   "weapon": ""
+  },
+  "villager_hollow_1": {
+   "body": "male",
+   "weapon": ""
+  },
+  "villager_hollow_2": {
+   "body": "female",
+   "weapon": ""
+  },
+  "villager_hollow_3": {
+   "body": "male",
+   "weapon": ""
+  },
+  "villager_hollow_4": {
+   "body": "female",
+   "weapon": ""
+  },
+  "villager_hollow_5": {
+   "body": "male",
+   "weapon": ""
   }
  },
  "weapons": {
   "longsword": {
-   "attack": "slash_big"
+   "attack": "slash_big",
+   "attacks": [
+    "slash_big",
+    "slash_rev_big",
+    "thrust_big"
+   ]
   },
   "dagger": {
-   "attack": "slash"
+   "attack": "slash",
+   "attacks": [
+    "slash",
+    "thrust"
+   ]
   },
   "mace": {
-   "attack": "slash_big"
+   "attack": "slash_big",
+   "attacks": [
+    "slash_big"
+   ]
   },
   "spear": {
-   "attack": "thrust"
+   "attack": "thrust",
+   "attacks": [
+    "thrust"
+   ]
   },
   "bow": {
-   "attack": "shoot"
+   "attack": "shoot",
+   "attacks": [
+    "shoot"
+   ]
   },
   "crossbow": {
-   "attack": "thrust"
+   "attack": "thrust",
+   "attacks": [
+    "thrust"
+   ]
   },
   "staff": {
-   "attack": "cast"
+   "attack": "cast",
+   "attacks": [
+    "cast"
+   ]
   }
+ },
+ "weapon_layout": {
+  "idle": {
+   "y": 0,
+   "size": 64,
+   "frames": 2,
+   "rows": 4
+  },
+  "walk": {
+   "y": 256,
+   "size": 64,
+   "frames": 9,
+   "rows": 4
+  },
+  "slash": {
+   "y": 512,
+   "size": 64,
+   "frames": 6,
+   "rows": 4
+  },
+  "thrust": {
+   "y": 768,
+   "size": 64,
+   "frames": 8,
+   "rows": 4
+  },
+  "shoot": {
+   "y": 1024,
+   "size": 64,
+   "frames": 13,
+   "rows": 4
+  },
+  "cast": {
+   "y": 1280,
+   "size": 64,
+   "frames": 7,
+   "rows": 4
+  },
+  "hurt": {
+   "y": 1536,
+   "size": 64,
+   "frames": 6,
+   "rows": 1
+  },
+  "run": {
+   "y": 1600,
+   "size": 64,
+   "frames": 8,
+   "rows": 4
+  },
+  "combat_idle": {
+   "y": 1856,
+   "size": 64,
+   "frames": 2,
+   "rows": 4
+  },
+  "slash_big": {
+   "y": 2112,
+   "size": 192,
+   "frames": 6,
+   "rows": 4
+  },
+  "slash_rev_big": {
+   "y": 2880,
+   "size": 192,
+   "frames": 6,
+   "rows": 4
+  },
+  "thrust_big": {
+   "y": 3648,
+   "size": 192,
+   "frames": 8,
+   "rows": 4
+  }
+ },
+ "weapon_width": 1536,
+ "weapon_height": 4416,
+ "big_body": {
+  "slash_big": [
+   "slash",
+   false
+  ],
+  "slash_rev_big": [
+   "slash",
+   true
+  ],
+  "thrust_big": [
+   "thrust",
+   false
+  ]
  }
 }

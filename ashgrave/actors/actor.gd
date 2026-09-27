@@ -44,7 +44,18 @@ var bar_height := 118.0        # where health bars and combat text float
 var selected := false:
 	set(v):
 		selected = v
+		_refresh_rim()
 		queue_redraw()
+## Under the cursor as an enemy (red rim).
+var hovered := false:
+	set(v):
+		if v != hovered:
+			hovered = v
+			_refresh_rim()
+
+func _refresh_rim() -> void:
+	if sprite is LpcSprite:
+		sprite.rim = Color(1.0, 0.8, 0.35, 0.9) if selected else (Color(0.95, 0.25, 0.2, 0.9) if hovered else Color(0, 0, 0, 0))
 
 var _floaters: Array = []
 var _walk_t := 0.0
@@ -108,6 +119,10 @@ func set_sprite(s: CharSprite) -> void:
 	sprite = s
 	add_child(s)
 	s.face(face_vec)
+	_refresh_rim()
+
+const RUN_SPEED := 140.0
+var _combat_t := 0.0      # seconds left in a fighting stance after striking or being hit
 
 func _update_sprite() -> void:
 	if sprite == null:
@@ -118,9 +133,11 @@ func _update_sprite() -> void:
 	elif sprite.one_shot:
 		return
 	elif not path.is_empty() and not statuses.has("root"):
-		sprite.play("walk")
+		# quick movers run; slowed or heavy ones walk
+		var slow: float = statuses.slow.mult if statuses.has("slow") else 1.0
+		sprite.play("run" if speed * slow >= RUN_SPEED else "walk")
 	else:
-		sprite.play("idle")
+		sprite.play("ready" if _combat_t > 0.0 else "idle")
 
 func _process(delta: float) -> void:
 	if TacticalPause.paused:
@@ -134,6 +151,7 @@ func _process(delta: float) -> void:
 	if downed:
 		return
 	stamina = minf(max_stamina, stamina + 8.0 * delta)
+	_combat_t -= delta
 	_swing_cd -= delta
 	_flash = maxf(0.0, _flash - delta)
 	_lunge = maxf(0.0, _lunge - delta)
@@ -276,6 +294,7 @@ func _face(p: Vector2) -> void:
 
 func _strike(tgt: Actor) -> void:
 	_lunge = 0.18
+	_combat_t = 4.0
 	if sprite:
 		sprite.play("attack", true)
 	Audio.play("bow" if ranged else "swing")
@@ -355,6 +374,7 @@ func take_damage(amount: float, source: Actor = null, crit := false) -> void:
 		amount = maxf(1.0, roundf(amount * (1.0 - statuses.guard.dr)))
 	hp -= amount
 	_flash = 0.15
+	_combat_t = 4.0
 	Audio.play("hit")
 	_floaters.append({"text": ("%d!" if crit else "%d") % int(amount), "color": Color(1, 0.85, 0.3) if crit else (Color(1, 0.45, 0.4) if faction == "party" else Color(1, 1, 1)), "t": 0.0})
 	if source:
