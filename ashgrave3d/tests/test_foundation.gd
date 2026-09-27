@@ -42,6 +42,10 @@ func test_character_model_maps_clips() -> void:
 	check(m.has_clip("walk"), "walk clip not found: %s" % [m.clips])
 	check(not m.clips.walk.has("Walking_Woman2"), "the 2-frame pose clip was mapped as a walk")
 	m.play("attack", true)
+	if m.has_clip("attack"):
+		check(m._procedural == "" and m.ap.current_animation in m.clips.attack, "attack clip not played: %s" % [m.clips.attack])
+	m.clips["attack"] = []
+	m.play("attack", true)
 	check(m._procedural == "lunge", "missing attack clip should fall back to a lunge")
 	m.queue_free()
 	var stand := CharacterModel.new()
