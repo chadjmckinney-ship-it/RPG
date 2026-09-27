@@ -18,8 +18,8 @@ const ONE_SHOT := ["attack", "cast", "shoot", "hit", "die"]
 ## Clip-name keywords tried when anims.json doesn't name a clip.
 const KEYWORDS := {
 	"idle": ["idle", "stand", "breath"], "ready": ["combat_idle", "combatidle", "ready", "stance"],
-	"walk": ["walk"], "run": ["run", "sprint", "jog"], "attack": ["attack", "slash", "swing", "stab", "punch", "strike"],
-	"cast": ["cast", "spell"], "shoot": ["shoot", "bow", "aim"], "hit": ["hit", "hurt", "damage"], "die": ["death", "die", "dying"],
+	"walk": ["walk"], "run": ["run", "sprint", "jog"], "attack": ["attack", "slash", "swing", "stab", "punch", "strike", "combo"],
+	"cast": ["cast", "spell"], "shoot": ["shoot", "bow", "aim"], "hit": ["hit", "hurt", "damage"], "die": ["death", "die", "dying", "dead"],
 }
 
 var id := ""

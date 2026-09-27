@@ -37,11 +37,11 @@ The game looks for these clips by name (any case, and the name only has to conta
 | combat stance | `combat_idle` / `ready` / `stance` | uses idle |
 | walk | `walk` | slides (needed!) |
 | run | `run` / `jog` | walk cycle played faster |
-| attack | `attack` / `slash` / `stab` / `punch` (several = they rotate) | forward lunge |
+| attack | `attack` / `slash` / `stab` / `punch` / `combo` (several = they rotate) | forward lunge |
 | cast | `cast` / `spell` | lunge |
 | shoot | `shoot` / `bow` | lunge |
 | hit | `hit` / `hurt` | flinch |
-| death | `death` / `die` | falls over |
+| death | `death` / `die` / `dead` (Meshy's name) | falls over |
 
 Clips shorter than 0.2 s are ignored. Meshy adds a 2-frame bind-pose clip, and this skips it.
 
