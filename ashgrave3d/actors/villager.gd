@@ -15,6 +15,8 @@ const STORY_TINT := {"maud": Color("3a4a5a"), "nessa": Color("5a4a5a"), "harl": 
 	"oswin": Color("5a5a62"), "ketta": Color("3a4a2c")}
 ## Ordinary villagers' bodies. A village's villagers take consecutive ones, so two never match.
 const VILLAGER_BODIES := ["villager_1", "villager_2", "villager_3"]
+## All three villager bodies are women, so villagers take these names.
+const VILLAGER_NAMES := ["Bettrys", "Dagny", "Elsbet", "Hild", "Isolde", "Lise"]
 
 var job := "villager"     # smith | keeper | villager | elder | wisewoman | captain | companion
 var npc_id := ""          # stable id used by dialogue and quests
@@ -103,6 +105,8 @@ func _idle(delta: float) -> void:
 		issue({"type": "move", "cell": dest})
 
 func _name_for(v: Dictionary, index: int) -> String:
+	if job == "villager":
+		return VILLAGER_NAMES[(absi(hash([v.id, "names"])) + index) % VILLAGER_NAMES.size()]
 	var names := ["Aldo", "Bettrys", "Corwen", "Dagny", "Elsbet", "Fenn", "Garrick", "Hild", "Isolde", "Jory", "Kestrel", "Lise"]
 	var h := absi(hash([v.id, index]))
 	var title: String = {"smith": "the smith", "keeper": "of the tavern"}.get(job, "")

@@ -142,6 +142,7 @@ func test_villagers_get_different_bodies() -> void:
 		b.setup(v, "villager", 3)
 		check(a.body.id in Villager.VILLAGER_BODIES and b.body.id in Villager.VILLAGER_BODIES, "villager body not one of %s" % [Villager.VILLAGER_BODIES])
 		check(a.body.id != b.body.id, "two villagers in %s share a body" % v.id)
+		check(a.display_name != b.display_name and a.display_name in Villager.VILLAGER_NAMES, "villager names %s / %s" % [a.display_name, b.display_name])
 		a.free()
 		b.free()
 
