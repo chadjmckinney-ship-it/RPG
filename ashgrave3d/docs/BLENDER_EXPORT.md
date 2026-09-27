@@ -45,7 +45,11 @@ The game looks for these clips by name (any case, and the name only has to conta
 
 Clips shorter than 0.2 s are ignored. Meshy adds a 2-frame bind-pose clip, and this skips it.
 
-**Meshy tip:** use the Animate feature on the same rigged model to make Idle, Run, Attack and Death, and download each one as a `.glb`. Drop them in the character's folder with any names, for example `maren_idle.glb` or `maren_attack.glb`. The game copies their clips onto the main model, because the skeletons match.
+**Meshy tip:** use the Animate feature on the same rigged model to make Idle, Run, Attack and Death, and download each one as a `.glb`. Don't drop those downloads in the folder: every one is a full copy of the character, mesh and textures included (15–30 MB each, past GitHub's 25 MB browser upload). Pack them into one file instead, then push it with git:
+```
+python ashgrave3d/tools/meshy_pack.py maren C:/Users/Chad/Downloads/Maren.zip
+```
+That writes `characters/maren/maren.glb` with every clip on one body and textures capped at 2048 px (Meshy's metal/roughness map is 4096). It takes folders, `.zip` files or single `.glb` files, refuses a file whose body differs from the rest, and needs `--force` to replace a character packed before. Needs Pillow (`pip install pillow`) for the texture cap.
 
 ## anims.json (optional)
 ```json

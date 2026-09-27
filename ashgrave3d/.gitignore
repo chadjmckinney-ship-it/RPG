@@ -1,2 +1,4 @@
 .godot/
 *.import
+# Textures Godot extracts from characters/<id>/<id>.glb on import; rebuilt from the .glb.
+characters/*/*_texture_*.png
