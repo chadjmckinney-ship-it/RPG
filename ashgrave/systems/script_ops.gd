@@ -4,7 +4,7 @@ extends RefCounted
 ## Conditions:  flag:x  !flag:x  has:item:n  coin:n  recruited:id  !recruited:id
 ##              quest:id (known)  !quest:id  active:id  done:id  stage:id:n  rep:faction:>=n
 ## Effects:     flag:x  give:item:n  take:item:n  rep:faction:+n  approve:id:+n
-##              quest_start:id  quest_advance:id  recruit:id  spawn:what  stat:id:stat:+n
+##              quest_start:id  quest_advance:id  recruit:id  spawn:what  stat:id:stat:+n  xp:n
 
 static func check(cond: String) -> bool:
 	var neg := cond.begins_with("!")
@@ -41,6 +41,7 @@ static func run(effect: String) -> void:
 			GameState.inventory.add(p[1], n)
 			Events.combat_message.emit("Received %s%s." % [Items.item_name(p[1]), (" ×%d" % n) if n > 1 else ""])
 		"take": GameState.inventory.remove(p[1], int(p[2]) if p.size() > 2 else 1)
+		"xp": Progression.award(int(p[1]), "quest")
 		"rep": GameState.change_rep(p[1], int(p[2]))
 		"approve":
 			GameState.approval[p[1]] = clampi(GameState.approval.get(p[1], 0) + int(p[2]), -100, 100)

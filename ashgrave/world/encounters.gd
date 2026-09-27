@@ -4,6 +4,13 @@ extends RefCounted
 
 const SAFE_RADIUS := 18.0   # no camps this close to the starting point
 const VILLAGE_RADIUS := 16.0 # nor this close to a village
+## Regional danger: camps get a rank (0..3) by distance from the starting point.
+const RANK_START := 30.0
+const RANK_BAND := 55.0
+
+static func rank_at(world: WorldGen, c: Vector2i) -> int:
+	var d := Vector2(c - world.spawn_cell()).length()
+	return clampi(int((d - RANK_START) / RANK_BAND), 0, 3)
 
 static func camps_for_chunk(world: WorldGen, ch: Vector2i) -> Array:
 	var rng := RandomNumberGenerator.new()
@@ -30,7 +37,7 @@ static func camps_for_chunk(world: WorldGen, ch: Vector2i) -> Array:
 			var types: Array = []
 			for k in cells.size():
 				types.append(MIXES[type][k % MIXES[type].size()] if MIXES.has(type) and k > 0 else type)
-			out.append({"id": "%d:%d:%d" % [ch.x, ch.y, i], "type": type, "cells": cells, "types": types})
+			out.append({"id": "%d:%d:%d" % [ch.x, ch.y, i], "type": type, "cells": cells, "types": types, "rank": rank_at(world, c)})
 	return out
 
 static func _open(world: WorldGen, c: Vector2i) -> bool:

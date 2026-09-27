@@ -3,7 +3,7 @@ extends SceneTree
 ##   godot --headless --path . -s res://tests/balance.gd   (RUNS=n to change repetitions)
 
 const SCENARIOS := [
-	# [label, party ids, gear, enemies, optional hour (default noon)]
+	# [label, party ids, gear, enemies, optional {hour (default noon), level (party), rank (enemies)}]
 	["Maren solo vs hound", ["maren"], "none", ["hound"]],
 	["Maren solo vs crows", ["maren"], "none", ["crows"]],
 	["Maren solo vs cultist", ["maren"], "none", ["cultist"]],
@@ -18,15 +18,26 @@ const SCENARIOS := [
 	["Party vs bandit camp", ["maren", "oswin", "ketta"], "none", ["bandit", "crossbow", "crossbow"]],
 	["Party vs 2 boars", ["maren", "oswin", "ketta"], "none", ["boar", "boar"]],
 	["Party vs 2 revenants", ["maren", "oswin", "ketta"], "none", ["revenant", "revenant"]],
-	["Geared vs Drowned Lord", ["maren", "oswin", "ketta"], "iron", ["barrow_lord", "risen", "risen"]],
-	["Geared vs Ashen Knight", ["maren", "oswin", "ketta"], "iron", ["ash_knight", "ghoul"]],
-	["Geared vs Drowned Lord night", ["maren", "oswin", "ketta"], "iron", ["barrow_lord", "risen", "risen"], 23],
-	["Geared vs Ashen Knight night", ["maren", "oswin", "ketta"], "iron", ["ash_knight", "ghoul"], 23],
+	["L1 vs rank-1 risen x2", ["maren", "oswin", "ketta"], "none", ["risen", "risen"], {"rank": 1}],
+	["L4 vs rank-1 risen x2", ["maren", "oswin", "ketta"], "none", ["risen", "risen"], {"rank": 1, "level": 4}],
+	["L4 vs rank-1 bandit camp", ["maren", "oswin", "ketta"], "none", ["bandit", "crossbow", "crossbow"], {"rank": 1, "level": 4}],
+	["L1 vs rank-2 ghouls x3", ["maren", "oswin", "ketta"], "none", ["ghoul", "ghoul", "ghoul"], {"rank": 2}],
+	["L7 vs rank-2 ghouls x3", ["maren", "oswin", "ketta"], "iron", ["ghoul", "ghoul", "ghoul"], {"rank": 2, "level": 7}],
+	["L10 vs rank-3 boars x2", ["maren", "oswin", "ketta"], "iron", ["boar", "boar"], {"rank": 3, "level": 10}],
+	["L4 Drowned Lord (r1)", ["maren", "oswin", "ketta"], "iron", ["barrow_lord", "risen", "risen"], {"rank": 1, "level": 4}],
+	["L4 Drowned Lord (r1) night", ["maren", "oswin", "ketta"], "iron", ["barrow_lord", "risen", "risen"], {"rank": 1, "level": 4, "hour": 23}],
+	["L7 Ashen Knight (r2)", ["maren", "oswin", "ketta"], "iron", ["ash_knight", "ghoul"], {"rank": 2, "level": 7}],
 ]
 const GEAR := {"iron": {"maren": ["iron-blade", "hide-jerkin"], "oswin": ["iron-blade", "iron-mail"], "ketta": ["yew-bow", "hide-jerkin"]}}
 
+var Progression
+var Talents
+
 func _initialize() -> void:
 	await process_frame
+	# Loaded here, not referenced by class name: they use autoloads, which -s scripts can't see at compile time.
+	Progression = load("res://systems/progression.gd")
+	Talents = load("res://systems/talents.gd")
 	var runs := int(OS.get_environment("RUNS")) if OS.get_environment("RUNS") != "" else 4
 	var only := OS.get_environment("ONLY")
 	var gs = root.get_node("GameState")
@@ -51,19 +62,27 @@ func _initialize() -> void:
 	quit()
 
 func _fight(gs, sc: Array) -> Dictionary:
+	var opts: Dictionary = sc[4] if sc.size() > 4 else {}
 	gs.reset()
 	gs.recruited = sc[1].duplicate()
+	gs.xp = Progression.THRESHOLDS[opts.get("level", 1) - 1]
 	# Every fight starts at a fixed hour; otherwise the clock drifts into night across scenarios.
-	root.get_node("TimeOfDay").time = (sc[4] if sc.size() > 4 else 12) / 24.0
+	root.get_node("TimeOfDay").time = opts.get("hour", 12) / 24.0
 	var main = load("res://main.tscn").instantiate()
 	main.spawn_encounters = false
 	root.add_child(main)
 	await process_frame
 	for m in main.party.members:
+		# talents: always the first option of each open tier
+		while Talents.pending_tier(m.companion_id, Progression.level()) >= 0:
+			var tier: int = Talents.pending_tier(m.companion_id, Progression.level())
+			Talents.choose(m.companion_id, tier, Talents.DEFS[m.companion_id][tier][0].id)
 		for id in GEAR.get(sc[2], {}).get(m.companion_id, []):
 			gs.inventory.add(id)
 			m.equip(id, gs.inventory)
+		m.recompute_stats()
 		m.hp = m.max_hp
+		m.stamina = m.max_stamina
 	var lead = main.party.members[0]
 	var foes := []
 	var r := 5
@@ -71,7 +90,7 @@ func _fight(gs, sc: Array) -> Dictionary:
 		for dx in range(-r, r + 1):
 			var c = lead.cell + Vector2i(dx, -r)
 			if foes.size() < sc[3].size() and main.world.walkable(c) and not main.world.has_tree(c) and not main.pathfinder.find_path(lead.cell, c).is_empty():
-				foes.append(main.spawn_creature(sc[3][foes.size()], c))
+				foes.append(main.spawn_creature(sc[3][foes.size()], c, "", opts.get("rank", 0)))
 		r += 1
 	main.party.select(main.party.members.duplicate())
 	main.party.order_attack(foes[0])
@@ -80,6 +99,8 @@ func _fight(gs, sc: Array) -> Dictionary:
 	while t < 180.0:
 		await create_timer(0.25).timeout
 		t += 0.25 * Engine.time_scale
+		if OS.get_environment("TRACE") != "" and int(t) % 10 == 0:
+			print("   t=%3d party %s | foes %s" % [t, main.party.members.map(func(m): return int(m.hp)), foes.map(func(f): return int(f.hp) if is_instance_valid(f) else -1)])
 		if foes.all(func(f): return not is_instance_valid(f) or f.downed):
 			win = true
 			break

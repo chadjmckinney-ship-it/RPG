@@ -10,3 +10,4 @@ signal talk_requested(villager: Node)
 signal ui_opened(opened: bool)
 signal story_effect(effect: String)
 signal quests_changed
+signal leveled_up(level: int)

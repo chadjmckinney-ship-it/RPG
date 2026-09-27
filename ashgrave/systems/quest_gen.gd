@@ -66,7 +66,7 @@ static func _make(t: String, world: WorldGen, giver: String, v: Dictionary, rng:
 				"stages": [
 					{"text": "Kill the %s camp %s of %s." % [what.to_lower(), QuestDefs.compass(v.center, camp.center), v.name], "obj": {"type": "kill_camp", "camp": camp.id}, "target": QuestDefs.vec(camp.center)},
 					{"text": "Collect your %d coin in %s." % [reward, v.name], "obj": {"type": "talk", "options": [turn_in]}, "target": QuestDefs.vec(v.center)},
-				], "reward": []}
+				], "reward": ["xp:%d" % (70 if t == "clear_barrow" else 50)]}
 		"gather":
 			var item: String = ["bitterroot", "iron-ore", "deadwood", "hide"][rng.randi_range(0, 3)]
 			var n := rng.randi_range(3, 6)
@@ -77,7 +77,7 @@ static func _make(t: String, world: WorldGen, giver: String, v: Dictionary, rng:
 			return {"title": "Supplies: %s" % Items.item_name(item), "giver": giver,
 				"pitch": "I'm short on %s. Bring me %d and I'll pay %d coin." % [Items.item_name(item).to_lower(), n, reward],
 				"stages": [{"text": "Bring %d %s to %s." % [n, Items.item_name(item).to_lower(), v.name], "obj": {"type": "talk", "options": [turn_in]}, "target": QuestDefs.vec(v.center)}],
-				"reward": []}
+				"reward": ["xp:40"]}
 		"courier":
 			var other := {}
 			var best := INF

@@ -24,6 +24,8 @@ var night_bonus := 0.0
 var evasion := 0.0        # chance to dodge a normal attack
 var lifesteal := 0.0      # fraction of melee damage returned as health
 var on_hit_status := {}
+var riposte := 0.0        # chance to strike back at an adjacent attacker
+var ability_mods := {}    # ability id -> modifiers (see Abilities.effective)
 var abilities: Array[String] = []
 var ability_cd := {}
 
@@ -205,7 +207,7 @@ func _run_order(delta: float) -> void:
 	var tcell := order_target_cell(o)
 	var reach := attack_range
 	if o.type == "ability":
-		reach = maxf(1.0, Abilities.get_def(o.id).get("range", 1.0))
+		reach = maxf(1.0, Abilities.effective(self, o.id).get("range", 1.0))
 		if Abilities.get_def(o.id).target == "self":
 			reach = INF
 	if cell_distance(tcell) <= reach + 0.01:
@@ -290,7 +292,7 @@ func _strike(tgt: Actor) -> void:
 		tgt.add_status(on_hit_status.duplicate())
 
 func can_use(id: String) -> bool:
-	var a := Abilities.get_def(id)
+	var a := Abilities.effective(self, id)
 	return not a.is_empty() and not downed and ability_cd.get(id, 0.0) <= 0.0 and stamina >= a.cost
 
 func use_ability(id: String, target = null, target_cell := Vector2i.ZERO, queue := false) -> bool:
@@ -305,14 +307,14 @@ func use_ability(id: String, target = null, target_cell := Vector2i.ZERO, queue 
 	return true
 
 func _cast(id: String, tgt, tcell: Vector2i) -> void:
-	var a := Abilities.get_def(id)
+	var a := Abilities.effective(self, id)
 	if not can_use(id):
 		return
 	stamina -= a.cost
 	ability_cd[id] = a.cd
 	_lunge = 0.2
 	if sprite:
-		sprite.play("attack" if a.kind == "damage" else "cast", true)
+		sprite.play("attack" if a.kind in ["damage", "area_damage"] else "cast", true)
 	log_msg("%s: %s" % [display_name, a.name])
 	match a.kind:
 		"damage":
@@ -332,6 +334,19 @@ func _cast(id: String, tgt, tcell: Vector2i) -> void:
 			for other in (ctx.actors if ctx else []):
 				if is_instance_valid(other) and other.alive() and is_hostile_to(other) and Vector2(other.cell - tcell).length() <= a.radius:
 					other.add_status(a.status.duplicate())
+		"area_damage", "area_heal":
+			var centre := cell if a.target == "self" else tcell
+			var healing: bool = a.kind == "area_heal"
+			if ctx and ctx.fx:
+				ctx.fx.ring(map_layer.map_to_local(centre), a.radius * WorldGen.TILE_H, Color(0.5, 1.0, 0.6) if healing else Color(1.0, 0.6, 0.3))
+			for other in (ctx.actors if ctx else []):
+				if not is_instance_valid(other) or not other.alive() or Vector2(other.cell - centre).length() > a.radius:
+					continue
+				if healing and not is_hostile_to(other):
+					other.heal(a.heal)
+				elif not healing and is_hostile_to(other):
+					var r := Effect.damage(self, other, a.power)
+					other.take_damage(r.amount, self, r.crit)
 
 func take_damage(amount: float, source: Actor = null, crit := false) -> void:
 	if downed:
@@ -427,8 +442,8 @@ func _draw() -> void:
 		var y: float = -bar_height - 12.0 - f.t * 40.0
 		var c: Color = f.color
 		c.a = 1.0 - maxf(0.0, f.t - 0.6) / 0.4
-		draw_string(UiTheme.font(), Vector2(-24, y + 2), f.text, HORIZONTAL_ALIGNMENT_CENTER, 48, 32, Color(0, 0, 0, c.a))
-		draw_string(UiTheme.font(), Vector2(-25, y), f.text, HORIZONTAL_ALIGNMENT_CENTER, 48, 32, c)
+		draw_string(UiTheme.font(), Vector2(-79, y + 2), f.text, HORIZONTAL_ALIGNMENT_CENTER, 160, 32, Color(0, 0, 0, c.a))
+		draw_string(UiTheme.font(), Vector2(-80, y), f.text, HORIZONTAL_ALIGNMENT_CENTER, 160, 32, c)
 
 func _draw_bars() -> void:
 	if faction != "hostile" and hp >= max_hp and statuses.is_empty():
@@ -437,6 +452,10 @@ func _draw_bars() -> void:
 	var y := -bar_height
 	draw_rect(Rect2(-w / 2 - 1, y - 1, w + 2, 8), Color(0, 0, 0, 0.7))
 	draw_rect(Rect2(-w / 2, y, w * hp / max_hp, 6), Color(0.85, 0.25, 0.2) if faction != "party" else Color(0.4, 0.8, 0.4))
+	if has_method("level"):
+		var lv: int = call("level")
+		draw_string(UiTheme.font(), Vector2(w / 2 + 4, y + 8), "Lv %d" % lv, HORIZONTAL_ALIGNMENT_LEFT, -1, UiTheme.fs(11),
+			[Color(0.85, 0.82, 0.75), Color(1.0, 0.8, 0.4), Color(1.0, 0.55, 0.3), Color(1.0, 0.35, 0.35)][clampi((lv - 1) / 3, 0, 3)])
 	var x := -w / 2
 	for id in statuses:
 		var col: Color = {"poison": Color(0.6, 0.9, 0.3), "slow": Color(0.4, 0.6, 1), "root": Color(0.6, 0.9, 0.5), "guard": Color(0.9, 0.85, 0.5), "bleed": Color(0.8, 0.15, 0.15), "burn": Color(1.0, 0.5, 0.15)}.get(id, Color.WHITE)

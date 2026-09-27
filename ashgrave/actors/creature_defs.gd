@@ -1,11 +1,11 @@
 class_name CreatureDefs
 extends RefCounted
-## Stats per creature type. Loot is placeholder until inventory lands in Milestone 3.
+## Stats per creature type. xp overrides the default kill XP (see Progression.kill_xp).
 
 const DEFS := {
 	"barrow_lord": {"display_name": "The Drowned Lord", "max_hp": 220.0, "attack": 16.0, "defense": 9.0, "speed": 80.0,
 		"attack_range": 1.6, "attack_cooldown": 1.5, "night_bonus": 0.4, "on_hit_status": {"id": "slow", "time": 2.5, "mult": 0.6},
-		"loot": {"tithe-ledger": 1.0, "coin": [20, 30], "grave-dust": 1.0}},
+		"xp": 180, "loot": {"tithe-ledger": 1.0, "coin": [20, 30], "grave-dust": 1.0}},
 	"risen": {"display_name": "Barrow-risen", "max_hp": 60.0, "attack": 11.0, "defense": 6.0, "speed": 70.0,
 		"attack_range": 1.5, "attack_cooldown": 1.6, "night_bonus": 0.5, "loot": {"coin": [2, 6], "grave-dust": 0.6}},
 	"hound": {"display_name": "Grave-hound", "max_hp": 28.0, "attack": 8.0, "defense": 2.0, "speed": 175.0,
@@ -28,9 +28,9 @@ const DEFS := {
 	"revenant": {"display_name": "Salt revenant", "max_hp": 50.0, "attack": 8.0, "defense": 6.0, "speed": 90.0,
 		"attack_range": 6.0, "attack_cooldown": 2.2, "ranged": true, "night_bonus": 0.6,
 		"on_hit_status": {"id": "slow", "time": 2.0, "mult": 0.6}, "loot": {"coin": [2, 6], "grave-dust": 0.7}},
-	"ash_knight": {"display_name": "The Ashen Knight", "max_hp": 250.0, "attack": 16.0, "defense": 10.0, "speed": 95.0,
+	"ash_knight": {"display_name": "The Ashen Knight", "max_hp": 225.0, "attack": 16.0, "defense": 10.0, "speed": 95.0,
 		"attack_range": 1.6, "attack_cooldown": 1.4, "on_hit_status": {"id": "burn", "time": 3.0, "dps": 3.0},
-		"loot": {"ashen-greatsword": 1.0, "coin": [40, 60], "ashbloom": 1.0}},
+		"xp": 300, "loot": {"ashen-greatsword": 1.0, "coin": [40, 60], "ashbloom": 1.0}},
 	"cultist": {"display_name": "Hollow cultist", "max_hp": 34.0, "attack": 9.0, "defense": 3.0, "speed": 110.0,
 		"attack_range": 6.0, "attack_cooldown": 2.0, "ranged": true, "loot": {"coin": [3, 9], "bone-charm": 0.35}},
 }

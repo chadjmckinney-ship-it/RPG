@@ -12,6 +12,7 @@ var home := Vector2i.ZERO
 var camp_id := ""
 var flee_at := 0.0
 var loot := {}
+var rank := 0             # regional danger 0..3 (see Encounters.rank_at)
 var threat := {}          # Actor -> float
 var returning := false
 var fled := false
@@ -21,20 +22,40 @@ var _spotted := false
 func _init() -> void:
 	faction = "hostile"
 
-func setup(type: String, at: Vector2i) -> void:
+const RANK_NAMES := ["", "Hardened ", "Dread ", "Elder "]
+const HP_PER_RANK := 0.35
+const ATK_PER_RANK := 0.2
+const DEF_PER_RANK := 1.5
+
+func setup(type: String, at: Vector2i, rank_ := 0) -> void:
 	type_id = type
+	rank = clampi(rank_, 0, 3)
 	var d: Dictionary = CreatureDefs.DEFS[type]
 	var stats := d.duplicate(true)
 	loot = stats.get("loot", {})
 	stats.erase("loot")
+	stats.erase("xp")
 	flee_at = stats.get("flee_at", 0.0)
 	stats.erase("flee_at")
+	if rank > 0:
+		stats.max_hp = roundf(stats.max_hp * (1.0 + HP_PER_RANK * rank))
+		stats.attack = stats.attack * (1.0 + ATK_PER_RANK * rank)
+		stats.defense = stats.defense + DEF_PER_RANK * rank
+		if loot.has("coin"):
+			var c: Array = loot.coin
+			loot.coin = [roundi(c[0] * (1.0 + 0.5 * rank)), roundi(c[1] * (1.0 + 0.5 * rank))]
+		if not String(stats.display_name).begins_with("The "):
+			stats.display_name = RANK_NAMES[rank] + stats.display_name
 	setup_stats(stats)
 	place_at(at)
 	home = at
 	set_sprite(ArtMap.make_creature(type))
 	bar_height = {"crows": 104.0, "boar": 128.0, "barrow_lord": 150.0, "ash_knight": 140.0}.get(type, 118.0)
 	_wander_t = randf_range(1.0, 4.0)
+
+## Level shown on the health bar: 1, 4, 7 or 10.
+func level() -> int:
+	return 1 + 3 * rank
 
 ## True while fighting (used by party auto-engage and auto-pause).
 func aggressive() -> bool:

@@ -114,23 +114,33 @@ func _ready() -> void:
 	panels.setup(self)
 	Events.talk_requested.connect(panels.open_dialogue)
 	Events.story_effect.connect(_on_story_effect)
+	Events.leveled_up.connect(_on_leveled_up)
 	if ScriptOps.check("stage:mq_dust:2"):
 		_spawn_barrow()
 	if ScriptOps.check("stage:sq_ashen:1"):
 		_spawn_boss("ashen")
 	log_msg("Maren Vey's company makes camp at the edge of the wilds.")
 
+func _on_leveled_up(lv: int) -> void:
+	Audio.play("quest", 0.0)
+	var pending := false
+	for m in party.members:
+		m.recompute_stats()      # max HP rises; current HP keeps its proportion (no mid-fight full heal)
+		m._floaters.append({"text": "Level %d!" % lv, "color": Color(1.0, 0.85, 0.4), "t": 0.0})
+		pending = pending or Talents.pending_tier(m.companion_id, lv) >= 0
+	log_msg("The company reaches level %d%s" % [lv, " — choose talents in the pack (I → Company)." if pending else "."])
+
 func log_msg(text: String) -> void:
 	Events.combat_message.emit(text)
 
 # ---------------------------------------------------------------- creatures
 
-func spawn_creature(type: String, at: Vector2i, camp_id := "") -> Creature:
+func spawn_creature(type: String, at: Vector2i, camp_id := "", rank := 0) -> Creature:
 	var c := Creature.new()
 	c.map_layer = ground
 	c.world = world
 	c.camp_id = camp_id
-	c.setup(type, at)
+	c.setup(type, at, rank)
 	ysorted.add_child(c)
 	actors.append(c)
 	c.died.connect(_on_creature_died)
@@ -145,7 +155,7 @@ func _spawn_camps(ch: Vector2i) -> void:
 		if GameState.cleared_camps.has(camp.id):
 			continue
 		for k in camp.cells.size():
-			list.append(spawn_creature(camp.get("types", [])[k] if camp.has("types") else camp.type, camp.cells[k], camp.id))
+			list.append(spawn_creature(camp.get("types", [])[k] if camp.has("types") else camp.type, camp.cells[k], camp.id, camp.get("rank", 0)))
 	camp_creatures[ch] = list
 
 func _despawn_camps(ch: Vector2i) -> void:
@@ -160,6 +170,7 @@ const KILL_REP := {"cultist": {"church": 2, "hollow": -3}, "risen": {"church": 1
 func _on_creature_died(c: Actor) -> void:
 	for f in KILL_REP.get(c.type_id, {}):
 		GameState.change_rep(f, KILL_REP[c.type_id][f])
+	Progression.award(Progression.kill_xp(c.type_id, c.rank))
 	var camp: String = c.camp_id
 	if camp == "":
 		QuestLog.notify_kill(c.type_id, "")
@@ -169,6 +180,7 @@ func _on_creature_died(c: Actor) -> void:
 			return
 	GameState.cleared_camps[camp] = true
 	log_msg("The camp falls silent.")
+	Progression.award(Progression.camp_xp(c.rank), "camp cleared")
 	QuestLog.notify_kill(c.type_id, camp)
 	var v := world.village_near(c.cell, 48.0)
 	if not v.is_empty():
@@ -266,6 +278,9 @@ func add_member(id: String, at: Vector2i) -> PartyMember:
 		stats[k] = float(stats.get(k, 0.0)) + float(GameState.bonuses[id][k])
 	m.setup_stats(stats)
 	m.abilities.assign(d.abilities)
+	m.recompute_stats()           # level growth and talents (the company shares one level)
+	m.hp = m.max_hp
+	m.stamina = m.max_stamina
 	ysorted.add_child(m)
 	m.place_at(at)
 	m.refresh_look()
@@ -304,6 +319,9 @@ func _on_story_effect(effect: String) -> void:
 		"note":
 			panels.show_note(effect.substr(5))
 
+## Story fights are pitched at a party level: the barrow around 4, the Ashen Knight around 7.
+const BOSS_RANK := {"barrow": 1, "ashen": 2}
+
 func _spawn_boss(site: String) -> void:
 	var at: Vector2i = Story.setup(world)[site]
 	var camp := "story:" + site
@@ -311,8 +329,8 @@ func _spawn_boss(site: String) -> void:
 		if is_instance_valid(a) and a is Creature and a.camp_id == camp and a.alive():
 			return
 	if site == "ashen":
-		spawn_creature("ash_knight", party._free_near(at, {}), camp)
-		spawn_creature("ghoul", party._free_near(at + Vector2i(2, 1), {}), camp)
+		spawn_creature("ash_knight", party._free_near(at, {}), camp, BOSS_RANK.ashen)
+		spawn_creature("ghoul", party._free_near(at + Vector2i(2, 1), {}), camp, BOSS_RANK.ashen)
 		log_msg("A figure in blackened plate rises from the ashes of the tower.")
 
 func _spawn_barrow() -> void:
@@ -321,9 +339,9 @@ func _spawn_barrow() -> void:
 		if is_instance_valid(a) and a is Creature and a.camp_id == "story:barrow" and a.alive():
 			return
 	pathfinder.ensure_covers(party.leader().cell)
-	spawn_creature("barrow_lord", party._free_near(at, {}), "story:barrow")
+	spawn_creature("barrow_lord", party._free_near(at, {}), "story:barrow", BOSS_RANK.barrow)
 	for off in [Vector2i(2, 1), Vector2i(-2, 1)]:
-		spawn_creature("risen", party._free_near(at + off, {}), "story:barrow")
+		spawn_creature("risen", party._free_near(at + off, {}), "story:barrow", BOSS_RANK.barrow)
 	log_msg("The barrow stones grind aside. Something drowned climbs out.")
 
 ## Crafting stations available right now.

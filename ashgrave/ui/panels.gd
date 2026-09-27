@@ -140,7 +140,7 @@ func refresh() -> void:
 		c.queue_free()
 	if mode == "pack":
 		title.text = "The company's pack — %d coin" % GameState.inventory.count("coin")
-		for t in [["pack", "Items"], ["gear", "Gear"], ["craft", "Crafting"], ["quests", "Quests"], ["factions", "Factions"]]:
+		for t in [["pack", "Items"], ["company", "Company"], ["gear", "Gear"], ["craft", "Crafting"], ["quests", "Quests"], ["factions", "Factions"]]:
 			var b := Button.new()
 			b.text = t[1]
 			b.toggle_mode = true
@@ -183,6 +183,41 @@ func _tab_pack() -> void:
 		_row("%s ×%d" % [Items.item_name(id), inv.count(id)], _bonus_text(id), "", Callable(), false, id)
 	if inv.counts.size() <= 1:
 		content.add_child(_label("Gather herbs, ore and deadwood, or loot what you kill.", 14, MUTED))
+
+func _tab_company() -> void:
+	var lv := Progression.level()
+	var need := Progression.xp_for_next()
+	_section("Level %d — %s" % [lv, "%d / %d XP to level %d" % [Progression.xp_into_level(), need, lv + 1] if need > 0 else "the highest level"])
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 8)
+	bar.max_value = maxf(1.0, need)
+	bar.value = need if need == 0 else Progression.xp_into_level()
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = GOLD.darkened(0.15)
+	bar.add_theme_stylebox_override("fill", fill)
+	var back := StyleBoxFlat.new()
+	back.bg_color = Color(0, 0, 0, 0.5)
+	bar.add_theme_stylebox_override("background", back)
+	content.add_child(bar)
+	content.add_child(_label("The whole company shares one level. Talents come at levels 2, 4, 6, 8 and 10; a third ability (R) at level 5.", 13, MUTED))
+	for m in main.party.members:
+		var id: String = m.companion_id
+		_section("%s — HP %d  ATK %d  DEF %d  STA %d%s" % [m.display_name, m.max_hp, m.attack, m.defense, m.max_stamina,
+			("  dodge %d%%" % roundi(m.evasion * 100)) if m.evasion > 0.0 else ""])
+		var names: Array = Talents.chosen(id).map(func(t): return Talents.get_talent(id, t).name)
+		content.add_child(_label("Talents: " + (", ".join(names) if not names.is_empty() else "none yet"), 14, INK))
+		content.add_child(_label("Abilities: " + ", ".join(m.abilities.map(func(a): return Abilities.get_def(a).name)), 14, MUTED))
+		var tier := Talents.pending_tier(id, lv)
+		if tier >= 0:
+			content.add_child(_label("Choose a talent (level %d):" % Talents.TIERS[tier], 15, GOLD))
+			for t in Talents.DEFS[id][tier]:
+				var pick := func():
+					if Talents.choose(id, tier, t.id):
+						m.recompute_stats()
+						Events.combat_message.emit("%s learns %s." % [m.display_name, t.name])
+					refresh()
+				_row("   " + t.name, t.desc, "Choose", pick)
 
 func _tab_gear() -> void:
 	var inv := GameState.inventory

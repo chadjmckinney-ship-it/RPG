@@ -16,6 +16,8 @@ var quest_counter := 0
 var recruited: Array = ["maren"]
 var approval := {}        # companion id -> -100..100
 var bonuses := {}         # companion id -> {stat: bonus} from companion quests
+var xp := 0               # company experience (see Progression)
+var talents := {}         # companion id -> [talent ids] (see Talents)
 ## A save waiting for main.gd to apply after a scene reload.
 var pending_load := {}
 
@@ -36,6 +38,8 @@ func reset() -> void:
 	recruited = ["maren"]
 	approval = {"oswin": 0, "ketta": 0}
 	bonuses = {}
+	xp = 0
+	talents = {}
 
 func new_world(seed_value: int = -1) -> void:
 	world_seed = seed_value if seed_value >= 0 else randi() % 1_000_000
@@ -56,6 +60,7 @@ func to_dict(party_state: Array) -> Dictionary:
 		"cleared_camps": cleared_camps.keys(), "harvested": harvested.duplicate(), "party": party_state,
 		"flags": flags.keys(), "quests": quests.duplicate(true), "tracked": tracked, "quest_counter": quest_counter,
 		"recruited": recruited.duplicate(), "approval": approval.duplicate(), "bonuses": bonuses.duplicate(true),
+		"xp": xp, "talents": talents.duplicate(true),
 	}
 
 func load_dict(d: Dictionary) -> void:
@@ -89,6 +94,10 @@ func load_dict(d: Dictionary) -> void:
 	for k in d.get("approval", {}):
 		approval[k] = int(d.approval[k])
 	bonuses = d.get("bonuses", {}).duplicate(true)
+	xp = int(d.get("xp", 0))
+	talents = {}
+	for k in d.get("talents", {}):
+		talents[k] = Array(d.talents[k]).map(func(t): return String(t))
 
 func write_save(data: Dictionary) -> bool:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)

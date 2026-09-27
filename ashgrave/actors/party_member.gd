@@ -1,6 +1,6 @@
 class_name PartyMember
 extends Actor
-## A controllable party member: placeholder figure plus auto-retaliation when idle.
+## A controllable party member: auto-retaliation when idle, stats from level, talents and gear.
 
 const AUTO_ENGAGE_RANGE := 10.0  # join any fight this close (only creatures already fighting)
 
@@ -42,10 +42,25 @@ func unequip(slot: String, inv: Inventory) -> void:
 	equipment[slot] = ""
 	recompute_stats()
 
+## Stats = base (incl. quest bonuses) + level growth + talents + gear.
 func recompute_stats() -> void:
 	var hp_frac := hp / max_hp if max_hp > 0.0 else 1.0
 	for k in base_stats:
 		set(k, base_stats[k])
+	evasion = float(base_stats.get("evasion", 0.0))
+	lifesteal = float(base_stats.get("lifesteal", 0.0))
+	on_hit_status = {}
+	if companion_id != "":
+		var lv := Progression.level()
+		var fx := Talents.effects(companion_id, lv)
+		for k in fx.stats:
+			set(k, float(get(k)) + fx.stats[k])
+		evasion += fx.evasion
+		lifesteal += fx.lifesteal
+		riposte = fx.riposte
+		on_hit_status = fx.on_hit.duplicate()
+		ability_mods = fx.ability
+		abilities.assign(Talents.abilities_for(companion_id, lv))
 	for slot in equipment:
 		var id: String = equipment[slot]
 		if id == "":
@@ -106,6 +121,9 @@ func _run_order(delta: float) -> void:
 	super._run_order(delta)
 
 func _on_damaged(source: Actor) -> void:
+	if riposte > 0.0 and source and source.alive() and not downed and cell_distance(source.cell) <= 1.6 and randf() < riposte:
+		_floaters.append({"text": "riposte", "color": Color(1, 0.85, 0.5), "t": 0.0})
+		_strike(source)
 	if current == null and orders.is_empty() and source and source.alive():
 		issue({"type": "attack", "target": source, "auto": true})
 

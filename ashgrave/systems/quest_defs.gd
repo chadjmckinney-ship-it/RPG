@@ -19,7 +19,7 @@ static func build(id: String, world: WorldGen) -> Dictionary:
 				{"text": "Report to Warden Maud in %s." % start.name, "target": vec(start.center),
 					"obj": {"type": "talk", "options": [{"npc": "maud", "label": "The risen are destroyed.",
 						"reply": "Then you've bought us a week. No more. The dead don't wander this far unless something drives them.", "effects": ["give:coin:30", "rep:%s:5" % start.faction]}]}},
-			], "reward": ["quest_start:mq_dust"]}
+			], "reward": ["quest_start:mq_dust", "xp:100"]}
 		"mq_dust":
 			return {"id": id, "title": "Grave Dust", "giver": "maud", "stages": [
 				{"text": "Collect 3 grave dust from barrow-risen and show it to Old Nessa in %s." % hollow.name, "target": vec(hollow.center),
@@ -41,7 +41,7 @@ static func build(id: String, world: WorldGen) -> Dictionary:
 							"reply": "Leverage over the Church? That's worth more than your desertion, Vey. Consider your name cleared. And your purse full.",
 							"effects": ["take:tithe-ledger", "give:coin:150", "rep:companies:30", "rep:church:-10", "approve:oswin:-5", "approve:ketta:-5", "flag:ledger_companies"]},
 					]}},
-			], "reward": ["flag:act1_done"]}
+			], "reward": ["flag:act1_done", "xp:150"]}
 		"sq_ashen":
 			return {"id": id, "title": "The Ashen Knight", "giver": "harl", "stages": [
 				{"text": "Find the burnt watchtower %s of %s." % [compass(company.center, s.ashen), company.name],
@@ -51,13 +51,13 @@ static func build(id: String, world: WorldGen) -> Dictionary:
 					"obj": {"type": "talk", "options": [{"npc": "harl", "label": "Your Ashen Knight is ash.",
 						"reply": "Sir Edric burned the plague villages on the Church's coin and kept burning after they stopped paying. Good riddance. Keep the sword; you've earned it.",
 						"effects": ["give:coin:100", "rep:companies:10", "approve:ketta:5"]}]}},
-			], "reward": []}
+			], "reward": ["xp:200"]}
 		"cq_oswin":
 			return {"id": id, "title": "Oswin's Penance", "giver": "oswin", "stages": [
 				{"text": "Bring Oswin to the Chapel of Ash, %s of %s." % [compass(start.center, s.chapel), start.name],
 					"obj": {"type": "reach", "cell": vec(s.chapel), "radius": 3.0}, "target": vec(s.chapel),
 					"on_done": ["note:Oswin kneels in the ash for a long time. When he stands, he says only: \"It was my order that barred the doors.\" He walks a little straighter after that.", "stat:oswin:max_hp:15", "approve:oswin:15"]},
-			], "reward": []}
+			], "reward": ["xp:100"]}
 		"cq_ketta":
 			return {"id": id, "title": "Poacher's Debt", "giver": "ketta", "stages": [
 				{"text": "Settle Ketta's debt with Captain Harl in %s." % company.name, "target": vec(company.center),
@@ -69,7 +69,7 @@ static func build(id: String, world: WorldGen) -> Dictionary:
 						{"npc": "harl", "label": "Tell Harl the debt dies with his old captain.", "reply": "Bold, from a deserter. Get out before I remember what you're worth to the gallows.",
 							"effects": ["rep:companies:-10", "approve:ketta:5", "stat:ketta:attack:2"]},
 					]}},
-			], "reward": []}
+			], "reward": ["xp:100"]}
 	return {}
 
 static func vec(c: Vector2i) -> Array:

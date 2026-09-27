@@ -37,7 +37,7 @@ func setup(m: Node) -> void:
 	info.anchor_bottom = 1.0
 	info.offset_left = 16
 	info.offset_top = -26
-	info.text = "Right: move / attack / talk   Shift+Right: queue   Q/E: abilities   Space: pause   I: pack   J: quests   M: map   Esc: menu"
+	info.text = "Right: move / attack / talk   Shift+Right: queue   Q/E/R: abilities   Space: pause   I: pack   J: quests   M: map   Esc: menu"
 	info.add_theme_font_size_override("font_size", UiTheme.fs(12))
 	log_label = _label(15, INK)
 	log_label.anchor_top = 1.0
@@ -113,22 +113,32 @@ func _draw_cards() -> void:
 			cards.draw_rect(Rect2(0, y, 346, h), GOLD, false, 2.0)
 		cards.draw_set_transform(Vector2(62, 0))
 		cards.draw_string(font, Vector2(10, y + 17), "%d  %s" % [i + 1, m.display_name], HORIZONTAL_ALIGNMENT_LEFT, -1, UiTheme.fs(15), GOLD if sel else INK)
-		cards.draw_string(font, Vector2(90, y + 17), "DOWN" if m.downed else m.role, HORIZONTAL_ALIGNMENT_RIGHT, 180, UiTheme.fs(12), Color(0.9, 0.4, 0.35) if m.downed else MUTED)
+		var talent_ready := Talents.pending_tier(m.companion_id, Progression.level()) >= 0
+		var tag: String = "DOWN" if m.downed else ("▲ talent ready" if talent_ready else m.role)
+		cards.draw_string(font, Vector2(90, y + 17), tag, HORIZONTAL_ALIGNMENT_RIGHT, 180, UiTheme.fs(12), Color(0.9, 0.4, 0.35) if m.downed else (GOLD if talent_ready else MUTED))
 		_bar(Vector2(10, y + 23), 260, m.hp / m.max_hp, Color(0.75, 0.22, 0.2), "%d/%d" % [int(m.hp), int(m.max_hp)], 11.0)
 		_bar(Vector2(10, y + 37), 260, m.stamina / m.max_stamina, Color(0.75, 0.62, 0.25), "")
 		var x := 10.0
+		var step := 132.0 if m.abilities.size() <= 2 else 92.0
 		for s in m.abilities.size():
 			var id: String = m.abilities[s]
-			var a := Abilities.get_def(id)
+			var a := Abilities.effective(m, id)
 			var cd: float = m.ability_cd.get(id, 0.0)
 			var ready := m.can_use(id)
-			var label := "%s %s" % ["QE"[s], a.name]
+			var label := "%s %s" % ["QER"[s], a.name]
 			if cd > 0.0:
 				label += " %.0fs" % ceilf(cd)
-			cards.draw_string(font, Vector2(x, y + 57), label, HORIZONTAL_ALIGNMENT_LEFT, 130, UiTheme.fs(12), INK if ready else Color(0.5, 0.5, 0.5))
-			x += 132.0
+			cards.draw_string(font, Vector2(x, y + 57), label, HORIZONTAL_ALIGNMENT_LEFT, step - 2.0, UiTheme.fs(12), INK if ready else Color(0.5, 0.5, 0.5))
+			x += step
 		cards.draw_set_transform(Vector2.ZERO)
 		y += h + 6.0
+	# company level and XP
+	var lv := Progression.level()
+	var need := Progression.xp_for_next()
+	cards.draw_rect(Rect2(0, y, 346, 20), PANEL)
+	cards.draw_string(font, Vector2(8, y + 15), "Lv %d" % lv, HORIZONTAL_ALIGNMENT_LEFT, -1, UiTheme.fs(13), GOLD)
+	cards.draw_rect(Rect2(56, y + 7, 280, 6), Color(0, 0, 0, 0.6))
+	cards.draw_rect(Rect2(56, y + 7, 280.0 * (1.0 if need == 0 else float(Progression.xp_into_level()) / need), 6), GOLD.darkened(0.15))
 
 func _bar(p: Vector2, w: float, frac: float, col: Color, text: String, h := 7.0) -> void:
 	cards.draw_rect(Rect2(p, Vector2(w, h)), Color(0, 0, 0, 0.6))

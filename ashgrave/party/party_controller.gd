@@ -2,7 +2,7 @@ class_name PartyController
 extends Node2D
 ## Selection and orders.
 ##  Left-click / drag: select.  Right-click: move, or attack a hostile.
-##  Shift+right-click: queue the order.  Q / E: first selected member's abilities.
+##  Shift+right-click: queue the order.  Q / E / R: first selected member's abilities.
 ##  1-3 pick a member, Tab everyone.  Orders work while tactically paused.
 
 const FORMATION: Array[Vector2i] = [Vector2i(0, 0), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1), Vector2i(1, 1), Vector2i(-2, 0)]
@@ -116,8 +116,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif k == KEY_TAB:
 			select(members.duplicate())
 			get_viewport().set_input_as_handled()
-		elif k == KEY_Q or k == KEY_E:
-			begin_ability(0 if k == KEY_Q else 1, (event as InputEventKey).shift_pressed)
+		elif k == KEY_Q or k == KEY_E or k == KEY_R:
+			begin_ability({KEY_Q: 0, KEY_E: 1, KEY_R: 2}[k], (event as InputEventKey).shift_pressed)
 		elif k == KEY_ESCAPE:
 			targeting = {}
 
@@ -188,7 +188,7 @@ func begin_ability(slot: int, queue := false) -> void:
 	if slot >= m.abilities.size():
 		return
 	var id: String = m.abilities[slot]
-	var a := Abilities.get_def(id)
+	var a := Abilities.effective(m, id)
 	if not m.can_use(id):
 		Events.combat_message.emit("%s: %s isn't ready." % [m.display_name, a.name])
 		return
@@ -200,7 +200,7 @@ func begin_ability(slot: int, queue := false) -> void:
 func _resolve_targeting(p: Vector2, queue: bool) -> void:
 	var m: PartyMember = targeting.member
 	var id: String = targeting.id
-	var a := Abilities.get_def(id)
+	var a := Abilities.effective(m, id)
 	var ok := false
 	match a.target:
 		"enemy":
@@ -255,7 +255,7 @@ func _draw() -> void:
 			draw_circle(to, 6.0, col)
 			from = to
 	if not targeting.is_empty():
-		var a := Abilities.get_def(targeting.id)
+		var a := Abilities.effective(targeting.member, targeting.id)
 		var mp := get_global_mouse_position()
 		draw_arc(mp, 24, 0, TAU, 24, Color(0.5, 0.8, 1.0, 0.9), 3.0)
 		if a.target == "cell":
