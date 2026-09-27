@@ -1,13 +1,11 @@
 # Ashgrave
 
-Open-world isometric RPG in Godot 4.3 (GDScript). Dark low fantasy: Maren Vey, a deserter scout, leads a party of up to four across a procedurally generated plague province.
+Open-world isometric RPG in Godot 4.7.2 (GDScript). This is the 2D version, kept as a reference; the game continues as Ashgrave 3D in `../ashgrave3d/`. Dark low fantasy: Maren Vey, a deserter scout, leads a party of up to four across a procedurally generated plague province.
 
-Status: **Milestone 5 (content & polish)**. Seeded world of 6 biomes and villages; 11 creature types and 2 bosses; pausable real-time party combat; gathering, crafting, trading, factions; branching dialogue, a main story with a three-way ending, generated side quests, two recruitable companions; procedural music and sound; title screen, world map, settings; save/load; browser build.
+Status: **Milestone 5 (content & polish)**. Seeded world of 6 biomes and villages; 11 creature types and 2 bosses; pausable real-time party combat; gathering, crafting, trading, factions; branching dialogue, a main story with a three-way ending, generated side quests, two recruitable companions; procedural music and sound; title screen, world map, settings; save/load.
 
 ## Run
-- **Browser:** the exported build lives in `docs/play/`. Turn on GitHub Pages for this branch's `/docs` folder, or serve `docs/` with any static web server, and open `play/`.
-- **Godot:** open this folder in Godot 4.3 and press F5.
-- **Rebuild the web version:** `godot --headless --path . --export-release "Web" ../docs/play/index.html` (needs the 4.3 web export template).
+- **Godot:** open this folder in Godot 4.7.2 and press F5. (The browser build was dropped.)
 
 | Input | Action |
 | --- | --- |

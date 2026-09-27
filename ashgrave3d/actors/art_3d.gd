@@ -11,7 +11,7 @@ const CREATURES := {
 	"wight": {"model": "wight", "tint": Color("4a6048"), "size": 1.05},
 	"hound": {"model": "hound", "tint": Color("2a2a30"), "size": 0.7},
 	"lurker": {"model": "lurker", "tint": Color("3e5a34"), "size": 1.0},
-	"boar": {"model": "boar", "tint": Color("5a4030"), "size": 1.15},
+	"boar": {"model": "boar", "tint": Color("5a4030"), "size": 1.0},   # the .glb is already 1.87 m
 	"crows": {"model": "crows", "tint": Color("50504c"), "size": 0.6},
 	"bandit": {"model": "bandit", "tint": Color("6a4a34"), "size": 1.0},
 	"crossbow": {"model": "crossbow", "tint": Color("5a4a3a"), "size": 1.0},

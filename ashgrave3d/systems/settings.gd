@@ -29,21 +29,21 @@ static func save() -> void:
 	cfg.save(PATH)
 
 ## Apply the graphics level to a scene's environment and sun. SSAO, glow and SSIL need the
-## Forward+ renderer; on the Compatibility fallback they are simply ignored.
+## Forward+ renderer, so they stay off on the Compatibility fallback (no Vulkan), which
+## also mis-renders glow on the background.
 static func apply_graphics(env: Environment, sun: DirectionalLight3D, vp: Viewport) -> void:
 	var level := QUALITY.find(graphics)
-	# the Compatibility fallback (no Vulkan) mis-renders glow on the background; keep it plain
-	var fplus := RenderingServer.get_rendering_device() != null
-	env.ssao_enabled = level >= 1
+	var fplus := RenderingServer.get_current_rendering_method() == "forward_plus"
+	env.ssao_enabled = level >= 1 and fplus
 	env.ssao_radius = 1.2
 	env.ssao_intensity = 1.6
 	env.glow_enabled = level >= 1 and fplus
 	env.glow_intensity = 0.6
 	env.glow_bloom = 0.05
-	env.ssil_enabled = level >= 2
+	env.ssil_enabled = level >= 2 and fplus
 	sun.shadow_enabled = true
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL if level == 0 else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	sun.directional_shadow_max_distance = [40.0, 60.0, 80.0][level]
 	sun.shadow_blur = [0.5, 1.0, 1.5][level]
 	vp.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][level]
-	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if level >= 1 else Viewport.SCREEN_SPACE_AA_DISABLED
+	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if level >= 1 and fplus else Viewport.SCREEN_SPACE_AA_DISABLED

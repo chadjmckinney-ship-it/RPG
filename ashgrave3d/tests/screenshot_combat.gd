@@ -34,7 +34,7 @@ func _initialize():
 		party.members[i].place_at(party.free_near(open + party.FORMATION[i], {}))
 	lead = party.members[0]
 	main.cam.position = lead.position
-	var types = ["risen", "ghoul", "bandit", "risen"]
+	var types = ["ghoul", "boar", "bandit", "ghoul"]
 	for i in types.size():
 		var c = party.free_near(lead.cell + Vector2i(3 + i % 2, -1 + i), {})
 		foes.append(main.spawn_creature(types[i], c, "", i % 3))
