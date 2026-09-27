@@ -146,6 +146,17 @@ func test_villagers_get_different_bodies() -> void:
 		a.free()
 		b.free()
 
+func test_idle_npcs_face_the_camera() -> void:
+	var w := WorldGen.new(1337)
+	var folk := Villager.new()
+	folk.world = w
+	folk.setup(w.villages()[0], "villager", 2)
+	for i in 30:
+		folk._update_body()
+	var want := atan2(-Actor.REST_FACING.x, -Actor.REST_FACING.z)
+	check(absf(angle_difference(folk.body.rotation.y, want)) < 0.05, "idle villager turned to %.2f rad, not the camera's %.2f" % [folk.body.rotation.y, want])
+	folk.free()
+
 func test_gather_in_world() -> void:
 	var main: Node = await _boot()
 	var lead: PartyMember = main.party.members[0]

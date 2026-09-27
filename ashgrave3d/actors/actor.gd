@@ -49,6 +49,9 @@ var selected := false:
 
 const SPEED_SCALE := 3.0 / 160.0     # 160 legacy units = 3 m/s
 const RUN_SPEED := 140.0
+## Which way anyone outside the party turns while standing about out of combat: toward the
+## camera's default spot (RtsCamera yaw 45 puts it south-east, +X +Z), so their faces show.
+const REST_FACING := Vector3(1, 0, 1)
 
 var _ring: MeshInstance3D
 var _swing_cd := 0.0
@@ -294,6 +297,8 @@ func _update_body() -> void:
 		body.play("run" if speed * (statuses.slow.mult if statuses.has("slow") else 1.0) >= RUN_SPEED else "walk")
 	else:
 		body.play("ready" if in_combat() else "idle")
+		if faction != "party" and not in_combat():
+			body.face(REST_FACING)
 
 # ---------------------------------------------------------------- combat
 
