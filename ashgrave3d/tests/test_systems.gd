@@ -131,20 +131,26 @@ func test_villager_schedule() -> void:
 	check(smith.is_trader() and smith.stock().has("iron-blade"), "smith has no blades")
 	smith.free()
 
-func test_villagers_get_different_bodies() -> void:
+func test_village_folk_bodies_and_names() -> void:
 	var w := WorldGen.new(1337)
 	for v in w.villages():
-		var a := Villager.new()
-		a.world = w
-		a.setup(v, "villager", 2)
-		var b := Villager.new()
-		b.world = w
-		b.setup(v, "villager", 3)
-		check(a.body.id in Villager.VILLAGER_BODIES and b.body.id in Villager.VILLAGER_BODIES, "villager body not one of %s" % [Villager.VILLAGER_BODIES])
-		check(a.body.id != b.body.id, "two villagers in %s share a body" % v.id)
-		check(a.display_name != b.display_name and a.display_name in Villager.VILLAGER_NAMES, "villager names %s / %s" % [a.display_name, b.display_name])
-		a.free()
-		b.free()
+		var folk := []
+		for i in 4:
+			var f := Villager.new()
+			f.world = w
+			f.setup(v, ["smith", "keeper", "villager", "villager"][i], i)
+			folk.append(f)
+		var bodies := {}
+		var names := {}
+		for f in folk.slice(1):   # the keeper and the two villagers: women, all different
+			check(f.body.id in Villager.VILLAGER_BODIES, "%s in %s has body %s" % [f.job, v.id, f.body.id])
+			check(f.display_name.get_slice(" ", 0) in Villager.VILLAGER_NAMES, "%s in %s is named %s" % [f.job, v.id, f.display_name])
+			bodies[f.body.id] = true
+			names[f.display_name] = true
+		check(bodies.size() == 3 and names.size() == 3, "the keeper and villagers of %s share a body or a name" % v.id)
+		check(folk[0].body.id == "smith" and folk[0].display_name.get_slice(" ", 0) in Villager.SMITH_NAMES, "the smith is %s on %s" % [folk[0].display_name, folk[0].body.id])
+		for f in folk:
+			f.free()
 
 func test_idle_npcs_face_the_camera() -> void:
 	var w := WorldGen.new(1337)

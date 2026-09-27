@@ -2,8 +2,9 @@ class_name Villager
 extends Actor
 ## Settlement folk with a daily routine: work by day, the tavern in the evening, home at night.
 ## Traders (smith, tavern keeper) open the trade screen when the party talks to them.
-## Body: characters/<npc id>/ for story characters, characters/<job>/ for the smith and keeper,
-## one of VILLAGER_BODIES for ordinary villagers; tinted by the village's faction until a model exists.
+## Body: characters/<npc id>/ for story characters, characters/smith/ for the smith (a man), and one
+## of VILLAGER_BODIES (women) for the tavern keeper and ordinary villagers, unless characters/keeper/
+## exists; tinted by the village's faction until a model exists.
 
 const TRADES := {
 	"keeper": ["bandage", "antivenom", "fen-tonic"],
@@ -13,10 +14,11 @@ const FACTION_GOODS := {"church": ["penitent-robes"], "companies": ["barrow-blad
 const FACTION_TINT := {"church": Color("6a6a70"), "companies": Color("6a4a30"), "hollow": Color("4a5a3a")}
 const STORY_TINT := {"maud": Color("3a4a5a"), "nessa": Color("5a4a5a"), "harl": Color("7a5a2a"),
 	"oswin": Color("5a5a62"), "ketta": Color("3a4a2c")}
-## Ordinary villagers' bodies. A village's villagers take consecutive ones, so two never match.
+## Bodies for the keeper and villagers, all women. A village's three take consecutive ones, so none match.
 const VILLAGER_BODIES := ["villager_1", "villager_2", "villager_3"]
-## All three villager bodies are women, so villagers take these names.
+## The keeper and villagers are women; the smith is a man.
 const VILLAGER_NAMES := ["Bettrys", "Dagny", "Elsbet", "Hild", "Isolde", "Lise"]
+const SMITH_NAMES := ["Aldo", "Corwen", "Fenn", "Garrick", "Jory"]
 
 var job := "villager"     # smith | keeper | villager | elder | wisewoman | captain | companion
 var npc_id := ""          # stable id used by dialogue and quests
@@ -45,7 +47,7 @@ func setup(v: Dictionary, role: String, index: int) -> void:
 	home_cell = Settlements.door_cell(v, "house_a" if index % 2 == 0 else "house_b")
 	var tint: Color = FACTION_TINT.get(v.get("faction", ""), Color(0.45, 0.4, 0.34))
 	var body_id := role
-	if role == "villager":
+	if role == "villager" or (role == "keeper" and not ResourceLoader.exists("res://characters/keeper/keeper.glb")):
 		body_id = VILLAGER_BODIES[(absi(hash(v.id)) + index) % VILLAGER_BODIES.size()]
 	set_body(body_id, tint.lerp(Color(0.5, 0.45, 0.4), float(index % 3) * 0.2))
 
@@ -105,12 +107,10 @@ func _idle(delta: float) -> void:
 		issue({"type": "move", "cell": dest})
 
 func _name_for(v: Dictionary, index: int) -> String:
-	if job == "villager":
-		return VILLAGER_NAMES[(absi(hash([v.id, "names"])) + index) % VILLAGER_NAMES.size()]
-	var names := ["Aldo", "Bettrys", "Corwen", "Dagny", "Elsbet", "Fenn", "Garrick", "Hild", "Isolde", "Jory", "Kestrel", "Lise"]
-	var h := absi(hash([v.id, index]))
+	var pool: Array = SMITH_NAMES if job == "smith" else VILLAGER_NAMES
+	var given: String = pool[(absi(hash([v.id, "names"])) + index) % pool.size()]
 	var title: String = {"smith": "the smith", "keeper": "of the tavern"}.get(job, "")
-	return names[h % names.size()] + ((" " + title) if title != "" else "")
+	return given + ((" " + title) if title != "" else "")
 
 func _process(delta: float) -> void:
 	super._process(delta)
