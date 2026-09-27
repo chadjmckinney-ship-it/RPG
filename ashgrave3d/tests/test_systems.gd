@@ -131,6 +131,20 @@ func test_villager_schedule() -> void:
 	check(smith.is_trader() and smith.stock().has("iron-blade"), "smith has no blades")
 	smith.free()
 
+func test_villagers_get_different_bodies() -> void:
+	var w := WorldGen.new(1337)
+	for v in w.villages():
+		var a := Villager.new()
+		a.world = w
+		a.setup(v, "villager", 2)
+		var b := Villager.new()
+		b.world = w
+		b.setup(v, "villager", 3)
+		check(a.body.id in Villager.VILLAGER_BODIES and b.body.id in Villager.VILLAGER_BODIES, "villager body not one of %s" % [Villager.VILLAGER_BODIES])
+		check(a.body.id != b.body.id, "two villagers in %s share a body" % v.id)
+		a.free()
+		b.free()
+
 func test_gather_in_world() -> void:
 	var main: Node = await _boot()
 	var lead: PartyMember = main.party.members[0]

@@ -2,8 +2,8 @@ class_name Villager
 extends Actor
 ## Settlement folk with a daily routine: work by day, the tavern in the evening, home at night.
 ## Traders (smith, tavern keeper) open the trade screen when the party talks to them.
-## Body: characters/<npc id>/ for story characters, characters/<job>/ for everyone else
-## (smith, keeper, villager), tinted by the village's faction until a model exists.
+## Body: characters/<npc id>/ for story characters, characters/<job>/ for the smith and keeper,
+## one of VILLAGER_BODIES for ordinary villagers; tinted by the village's faction until a model exists.
 
 const TRADES := {
 	"keeper": ["bandage", "antivenom", "fen-tonic"],
@@ -13,6 +13,8 @@ const FACTION_GOODS := {"church": ["penitent-robes"], "companies": ["barrow-blad
 const FACTION_TINT := {"church": Color("6a6a70"), "companies": Color("6a4a30"), "hollow": Color("4a5a3a")}
 const STORY_TINT := {"maud": Color("3a4a5a"), "nessa": Color("5a4a5a"), "harl": Color("7a5a2a"),
 	"oswin": Color("5a5a62"), "ketta": Color("3a4a2c")}
+## Ordinary villagers' bodies. A village's villagers take consecutive ones, so two never match.
+const VILLAGER_BODIES := ["villager_1", "villager_2", "villager_3"]
 
 var job := "villager"     # smith | keeper | villager | elder | wisewoman | captain | companion
 var npc_id := ""          # stable id used by dialogue and quests
@@ -40,7 +42,10 @@ func setup(v: Dictionary, role: String, index: int) -> void:
 		_: work_cell = v.center + Vector2i(index - 2, 1)
 	home_cell = Settlements.door_cell(v, "house_a" if index % 2 == 0 else "house_b")
 	var tint: Color = FACTION_TINT.get(v.get("faction", ""), Color(0.45, 0.4, 0.34))
-	set_body(role if role in ["smith", "keeper"] else "villager", tint.lerp(Color(0.5, 0.45, 0.4), float(index % 3) * 0.2))
+	var body_id := role
+	if role == "villager":
+		body_id = VILLAGER_BODIES[(absi(hash(v.id)) + index) % VILLAGER_BODIES.size()]
+	set_body(body_id, tint.lerp(Color(0.5, 0.45, 0.4), float(index % 3) * 0.2))
 
 ## Named story characters (Maud, Nessa, Harl, companions awaiting recruitment).
 func setup_special(v: Dictionary, id: String, def: Dictionary) -> void:

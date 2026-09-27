@@ -11,7 +11,7 @@ ashgrave3d/landmarks/<kind>.glb            story sites: barrow, chapel, ashen (o
 `<id>` is the game's name for the character:
 - party: `maren`, `oswin`, `ketta`
 - story NPCs: `maud`, `nessa`, `harl`
-- village folk: `smith`, `keeper`, `villager` (all ordinary villagers share one model)
+- village folk: `smith`, `keeper`, and `villager_1` / `villager_2` / `villager_3` for ordinary villagers (a village's two never share one)
 - creatures: `risen`, `revenant`, `barrow_lord`, `ghoul`, `wight`, `hound`, `lurker`, `boar`, `crows`, `bandit`, `crossbow`, `cultist`, `ash_knight`
 
 Anything without a `.glb` shows a grey stand-in mannequin, so you can add characters one at a time.
