@@ -19,7 +19,7 @@ var arrow: Control
 
 func setup(m: Node) -> void:
 	main = m
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cards = Control.new()
 	cards.position = Vector2(12, 12)
@@ -39,7 +39,7 @@ func setup(m: Node) -> void:
 	info.anchor_bottom = 1.0
 	info.offset_left = 16
 	info.offset_top = -26
-	info.text = "Right: move / attack   Shift+Right: queue   Q/E/R: abilities   Space: pause   Wheel: zoom   Middle-drag / Z C: rotate   F: follow"
+	info.text = "Right: move / attack / talk / gather   Q/E/R: abilities   Space: pause   I: pack   J: quests   M: map   F5/F9: save/load   Esc: menu   Wheel, middle-drag, Z C: camera"
 	info.add_theme_font_size_override("font_size", UiTheme.fs(12))
 	log_label = _label(15, INK)
 	log_label.anchor_top = 1.0
@@ -75,7 +75,7 @@ func setup(m: Node) -> void:
 	tracker.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	tracker.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	arrow = Control.new()
-	arrow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	arrow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	arrow.draw.connect(_draw_arrow)
 	add_child(arrow)
@@ -110,9 +110,7 @@ func _draw_cards() -> void:
 		var sel: bool = main.party.selection.has(m)
 		var h := 64.0
 		cards.draw_rect(Rect2(0, y, 346, h), PANEL)
-		# portrait slot (live 3D portraits arrive in N3): the member's initial on their colour
-		cards.draw_rect(Rect2(4, y + 4, 56, 56), Color(0.12, 0.1, 0.08))
-		cards.draw_string(UiTheme.title_font(), Vector2(4, y + 48), m.display_name.substr(0, 1), HORIZONTAL_ALIGNMENT_CENTER, 56, 36, GOLD)
+		main.portraits.draw(cards, m, Rect2(4, y + 4, 56, 56))
 		if sel:
 			cards.draw_rect(Rect2(0, y, 346, h), GOLD, false, 2.0)
 		cards.draw_set_transform(Vector2(62, 0))

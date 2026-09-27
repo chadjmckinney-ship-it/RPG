@@ -2,13 +2,15 @@ extends SceneTree
 ## Minimal headless test runner:  godot --headless -s res://tests/run_tests.gd
 ## Runs every test_* method in the suites below; exits 1 on any failure.
 
-const SUITES := ["res://tests/test_foundation.gd", "res://tests/test_combat.gd"]
+const SUITES := ["res://tests/test_foundation.gd", "res://tests/test_combat.gd", "res://tests/test_progression.gd",
+	"res://tests/test_systems.gd", "res://tests/test_quests.gd", "res://tests/test_world_life.gd"]
 
 var failures := 0
 var passes := 0
 
 func _initialize() -> void:
 	await process_frame
+	root.get_node("GameState").save_path = "user://test_save.json"
 	for path in SUITES:
 		var script = load(path)
 		if script == null or not script.can_instantiate():

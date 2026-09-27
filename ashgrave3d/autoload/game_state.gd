@@ -1,7 +1,8 @@
 extends Node
 ## Everything that must survive a save: world seed plus diffs against the generated world.
 
-const SAVE_PATH := "user://ashgrave_save.json"
+## Tests point this elsewhere so they never touch a real save.
+var save_path := "user://ashgrave_save.json"
 
 var world_seed: int = 1337
 var world: WorldGen
@@ -100,16 +101,16 @@ func load_dict(d: Dictionary) -> void:
 		talents[k] = Array(d.talents[k]).map(func(t): return String(t))
 
 func write_save(data: Dictionary) -> bool:
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var f := FileAccess.open(save_path, FileAccess.WRITE)
 	if f == null:
 		return false
 	f.store_string(JSON.stringify(data))
 	return true
 
 func read_save() -> Dictionary:
-	if not FileAccess.file_exists(SAVE_PATH):
+	if not FileAccess.file_exists(save_path):
 		return {}
-	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	var f := FileAccess.open(save_path, FileAccess.READ)
 	var parsed = JSON.parse_string(f.get_as_text())
 	return parsed if parsed is Dictionary else {}
 

@@ -1,12 +1,13 @@
 class_name WorldOverlay
 extends Control
 ## 2D layer over the 3D view: health bars (with "Lv N" for enemies), status pips,
-## floating combat text and names of hovered enemies, projected from each actor.
+## floating combat text and names of hovered enemies and villagers, projected from each actor;
+## the name of a hovered gather node.
 
 var main: Node
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _process(_d: float) -> void:
@@ -42,7 +43,8 @@ func _draw() -> void:
 				draw_rect(Rect2(x, p.y - 9, 7, 7), col)
 				x += 10
 		if a.hovered and not a.downed:
-			draw_string(font, Vector2(p.x - 100, p.y - 14), a.display_name, HORIZONTAL_ALIGNMENT_CENTER, 200, UiTheme.fs(12), Color(1, 0.8, 0.7))
+			var talk: bool = a.faction == "neutral"
+			draw_string(font, Vector2(p.x - 100, p.y - 14), a.display_name + ("  (talk)" if talk else ""), HORIZONTAL_ALIGNMENT_CENTER, 200, UiTheme.fs(12), Color(1.0, 0.88, 0.55) if talk else Color(1, 0.8, 0.7))
 		for f in a.floaters:
 			var k: float = f.t / 1.1
 			var c: Color = f.color
@@ -50,3 +52,8 @@ func _draw() -> void:
 			var fp := p + Vector2(0, -20 - 40 * k)
 			draw_string(font, fp + Vector2(-60, 2), f.text, HORIZONTAL_ALIGNMENT_CENTER, 120, UiTheme.fs(18), Color(0, 0, 0, c.a))
 			draw_string(font, fp + Vector2(-61, 0), f.text, HORIZONTAL_ALIGNMENT_CENTER, 120, UiTheme.fs(18), c)
+	var n = main.party.interactable_at(get_viewport().get_mouse_position())
+	if n != null:
+		var np := cam.unproject_position(n.global_position + Vector3(0, 0.8, 0))
+		var ready: bool = n.ready_to_harvest()
+		draw_string(font, np + Vector2(-100, 0), n.display_name() + ("" if ready else " (picked clean)"), HORIZONTAL_ALIGNMENT_CENTER, 200, UiTheme.fs(12), Color(0.75, 0.95, 0.6) if ready else Color(0.6, 0.6, 0.6))

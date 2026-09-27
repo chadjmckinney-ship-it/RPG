@@ -6,13 +6,17 @@ ashgrave3d/characters/<id>/<id>.glb        the character (mesh + armature + any 
 ashgrave3d/characters/<id>/<anything>.glb  more clips for the same skeleton (optional)
 ashgrave3d/characters/<id>/anims.json      optional overrides (see below)
 ashgrave3d/equipment/<id>.glb              weapons and shields (N2)
+ashgrave3d/landmarks/<kind>.glb            story sites: barrow, chapel, ashen (optional)
 ```
 `<id>` is the game's name for the character:
 - party: `maren`, `oswin`, `ketta`
 - story NPCs: `maud`, `nessa`, `harl`
+- village folk: `smith`, `keeper`, `villager` (all ordinary villagers share one model)
 - creatures: `risen`, `revenant`, `barrow_lord`, `ghoul`, `wight`, `hound`, `lurker`, `boar`, `crows`, `bandit`, `crossbow`, `cultist`, `ash_knight`
 
 Anything without a `.glb` shows a grey stand-in mannequin, so you can add characters one at a time.
+Portraits in the HUD, dialogue and Company panels are rendered live from the same model, so a new
+`.glb` shows up there too. They frame the top of the model, so keep feet at the origin.
 
 ## Export settings (Blender → File → Export → glTF 2.0)
 - **Format:** glTF Binary (`.glb`).
@@ -21,7 +25,7 @@ Anything without a `.glb` shows a grey stand-in mannequin, so you can add charac
 - **Size:** metres, feet at the origin, about 1.6–1.8 m tall for people.
 - **Facing:** Blender's −Y (front view), which is how Meshy exports. If yours faces the other way, set `"yaw": 0` in `anims.json`.
 - **Animation:** tick Animations, and export each Action as its own clip ("Actions" or "NLA tracks").
-- **Textures:** 2048 px is fine, 1024 px keeps the browser version light. PNG or JPEG.
+- **Textures:** 2048 px is fine. PNG or JPEG.
 - **Materials:** Principled BSDF only (base colour, normal, metallic/roughness).
 
 ## Animation clips

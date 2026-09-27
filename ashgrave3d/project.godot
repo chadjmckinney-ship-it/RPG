@@ -3,7 +3,7 @@ config_version=5
 
 [application]
 config/name="Ashgrave 3D"
-run/main_scene="res://main.tscn"
+run/main_scene="res://title.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 
 [autoload]
@@ -25,6 +25,8 @@ theme/custom_font="res://art/ui/fonts/Jersey10.ttf"
 pause_toggle={"deadzone": 0.5, "events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":32,"key_label":0,"unicode":32,"location":0,"echo":false,"script":null)]}
 
 [rendering]
-renderer/rendering_method="gl_compatibility"
-renderer/rendering_method.mobile="gl_compatibility"
+
+rendering_device/fallback_to_opengl3=true
+renderer/rendering_method="forward_plus"
+renderer/rendering_method.mobile="mobile"
 anti_aliasing/quality/msaa_3d=1

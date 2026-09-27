@@ -1,5 +1,6 @@
 extends Node3D
-## Ashgrave 3D: the world, the party, the camera, the sun, camps and combat bookkeeping.
+## Ashgrave 3D: the world, the party, the camera, the sun, camps, villages and story sites,
+## combat bookkeeping, panels and save/load.
 
 const OUT_OF_COMBAT_REGEN := 3.0   # hp/s
 const REVIVE_DELAY := 4.0          # seconds of calm before downed members get up
@@ -17,7 +18,13 @@ var env: WorldEnvironment
 var fx: Fx3D
 var hud: Hud3D
 var overlay: WorldOverlay
+var panels: Panels
+var portraits: Portraits3D
 var actors: Array = []
+var chunk_props := {}           # chunk -> [Node] (villagers, gather nodes, landmarks)
+var gather_nodes: Array = []
+var interactables: Array = []   # non-actor things the party can right-click (gather nodes)
+var _quest_timer := 0.0
 var combat_log := CombatLog.new()
 var camp_creatures := {}        # chunk -> [Creature]
 var in_combat := false
@@ -27,6 +34,8 @@ var _defeat_timer := -1.0
 
 func _ready() -> void:
 	Actor.ctx = self
+	if not GameState.pending_load.is_empty():
+		GameState.load_dict(GameState.pending_load)
 	if GameState.world == null:
 		GameState.new_world(GameState.world_seed)
 	world = GameState.world
@@ -51,6 +60,11 @@ func _ready() -> void:
 	terrain.setup(world)
 	terrain.chunk_loaded.connect(_spawn_camps)
 	terrain.chunk_unloaded.connect(_despawn_camps)
+	terrain.chunk_loaded.connect(_spawn_props)
+	terrain.chunk_unloaded.connect(_despawn_props)
+	portraits = Portraits3D.new()
+	portraits.name = "Portraits"
+	add_child(portraits)
 	fx = Fx3D.new()
 	add_child(fx)
 	pathfinder = Pathfinder.new(world)
@@ -70,18 +84,33 @@ func _ready() -> void:
 	hud = Hud3D.new()
 	ui.add_child(hud)
 	hud.setup(self)
+	panels = Panels.new()
+	add_child(panels)
+	panels.setup(self)
 	var spawn := world.spawn_cell()
 	pathfinder.ensure_covers(spawn)
 	for id in Companions.ORDER:
 		if GameState.recruited.has(id):
 			add_member(id, party.free_near(spawn + PartyController.FORMATION[party.members.size()], {}))
 	party.select([party.members[0]])
+	if not GameState.pending_load.is_empty():
+		var data := GameState.pending_load
+		GameState.pending_load = {}
+		apply_party_state(data.get("party", []))
+		spawn = party.members[0].cell
 	cam.position = party.members[0].position
 	cam.follow = party.members[0]
 	terrain.focus_cell = spawn
 	terrain.load_all_now()
 	Events.leveled_up.connect(_on_leveled_up)
+	Events.talk_requested.connect(panels.open_dialogue)
+	Events.story_effect.connect(_on_story_effect)
+	apply_graphics()
 	_update_sun()
+	if ScriptOps.check("stage:mq_dust:2"):
+		_spawn_barrow()
+	if ScriptOps.check("stage:sq_ashen:1"):
+		_spawn_boss("ashen")
 	log_msg("Maren Vey's company makes camp at the edge of the wilds.")
 
 func log_msg(text: String) -> void:
@@ -145,6 +174,10 @@ func _on_creature_died(c: Actor) -> void:
 	log_msg("The camp falls silent.")
 	Progression.award(Progression.camp_xp(c.rank), "camp cleared")
 	QuestLog.notify_kill(c.type_id, camp)
+	var v := world.village_near(c.cell, 48.0)
+	if not v.is_empty():
+		log_msg("Word reaches %s." % v.name)
+		GameState.change_rep(v.faction, 4)
 
 func _on_enemy_spotted(c: Node) -> void:
 	if not in_combat:
@@ -164,6 +197,185 @@ func _on_leveled_up(lv: int) -> void:
 		pending = pending or Talents.pending_tier(m.companion_id, lv) >= 0
 	log_msg("The company reaches level %d%s" % [lv, " — talents to choose." if pending else "."])
 
+# ---------------------------------------------------------------- settlements & resources
+
+func _spawn_props(ch: Vector2i) -> void:
+	var list: Array = []
+	for v in world.villages():
+		if terrain.chunk_of(v.center) != ch:
+			continue
+		pathfinder.ensure_covers(v.center)
+		var specials := Story.special_npcs(world)
+		for id in specials:
+			var sp: Dictionary = specials[id]
+			if sp.village != v.id or GameState.recruited.has(id):
+				continue
+			var npc := Villager.new()
+			npc.world = world
+			add_child(npc)
+			npc.setup_special(v, id, sp)
+			list.append(_place_villager(npc))
+		var jobs := ["smith", "keeper", "villager", "villager"]
+		for i in jobs.size():
+			var vil := Villager.new()
+			vil.world = world
+			add_child(vil)
+			vil.setup(v, jobs[i], i)
+			list.append(_place_villager(vil))
+	var story := Story.setup(world)
+	for kind in ["barrow", "chapel", "ashen"]:
+		var at: Vector2i = story[kind]
+		if terrain.chunk_of(at) == ch:
+			var lm := Landmark.new()
+			lm.kind = kind
+			lm.name = "Landmark_" + kind
+			add_child(lm)
+			lm.position = world.cell_to_world(at) + Vector3(0, -0.1, 0)
+			list.append(lm)
+	for d in Gathering.nodes_for_chunk(world, ch):
+		var n := GatherNode.new()
+		n.data = d
+		add_child(n)
+		n.position = world.cell_to_world(d.cell)
+		gather_nodes.append(n)
+		interactables.append(n)
+		n.tree_exiting.connect(func(): gather_nodes.erase(n); interactables.erase(n))
+		list.append(n)
+	chunk_props[ch] = list
+
+func _place_villager(vil: Villager) -> Villager:
+	vil.place_at(party.free_near(vil.schedule_target(TimeOfDay.hour()), {}))
+	actors.append(vil)
+	vil.tree_exiting.connect(func(): actors.erase(vil))
+	return vil
+
+func _despawn_props(ch: Vector2i) -> void:
+	for n in chunk_props.get(ch, []):
+		if is_instance_valid(n):
+			n.queue_free()
+	chunk_props.erase(ch)
+
+## Crafting stations available right now.
+func stations() -> Array:
+	var out: Array = []
+	if not in_combat:
+		out.append("camp")
+	for v in world.villages():
+		var forge := Settlements.door_cell(v, "forge")
+		if party.members.any(func(m): return m.alive() and m.cell_distance(forge) <= 4.0):
+			out.append("forge")
+			break
+	return out
+
+# ---------------------------------------------------------------- story
+
+func _on_story_effect(effect: String) -> void:
+	var p := effect.split(":")
+	match p[0]:
+		"recruit":
+			var id := p[1]
+			if GameState.recruited.has(id):
+				return
+			var at := party.leader().cell
+			for a in actors.duplicate():
+				if is_instance_valid(a) and a is Villager and a.npc_id == id:
+					at = a.cell
+					a.queue_free()
+			GameState.recruited.append(id)
+			var m := add_member(id, party.free_near(at, {}))
+			log_msg("%s joins the company." % m.display_name)
+			QuestLog.start("cq_" + id)
+		"spawn":
+			if p[1] == "barrow":
+				_spawn_barrow()
+			else:
+				_spawn_boss(p[1])
+		"stat":
+			GameState.add_bonus(p[1], p[2], float(p[3]))
+			for m in party.members:
+				if m.companion_id == p[1]:
+					m.base_stats[p[2]] = float(m.base_stats.get(p[2], 0.0)) + float(p[3])
+					m.recompute_stats()
+			log_msg("%s grows stronger (%s %+d)." % [Companions.DEFS[p[1]].name, p[2].replace("max_", "").to_upper(), int(p[3])])
+		"note":
+			panels.show_note(effect.substr(5))
+
+## Story fights are pitched at a party level: the barrow around 4, the Ashen Knight around 7.
+const BOSS_RANK := {"barrow": 1, "ashen": 2}
+
+func _spawn_boss(site: String) -> void:
+	var at: Vector2i = Story.setup(world)[site]
+	var camp := "story:" + site
+	for a in actors:
+		if is_instance_valid(a) and a is Creature and a.camp_id == camp and a.alive():
+			return
+	pathfinder.ensure_covers(at)
+	if site == "ashen":
+		spawn_creature("ash_knight", party.free_near(at + Vector2i(0, 3), {}), camp, BOSS_RANK.ashen)
+		spawn_creature("ghoul", party.free_near(at + Vector2i(2, 4), {}), camp, BOSS_RANK.ashen)
+		log_msg("A figure in blackened plate rises from the ashes of the tower.")
+
+func _spawn_barrow() -> void:
+	var at: Vector2i = Story.setup(world).barrow
+	for a in actors:
+		if is_instance_valid(a) and a is Creature and a.camp_id == "story:barrow" and a.alive():
+			return
+	pathfinder.ensure_covers(at)
+	spawn_creature("barrow_lord", party.free_near(at + Vector2i(0, 2), {}), "story:barrow", BOSS_RANK.barrow)
+	for off in [Vector2i(2, 3), Vector2i(-2, 3)]:
+		spawn_creature("risen", party.free_near(at + off, {}), "story:barrow", BOSS_RANK.barrow)
+	log_msg("The barrow stones grind aside. Something drowned climbs out.")
+
+# ---------------------------------------------------------------- save / load
+
+func party_state() -> Array:
+	var out: Array = []
+	for m in party.members:
+		out.append({"name": m.display_name, "cell": [m.cell.x, m.cell.y], "hp": m.hp, "stamina": m.stamina,
+			"downed": m.downed, "equipment": m.equipment.duplicate()})
+	return out
+
+func apply_party_state(list: Array) -> void:
+	for d in list:
+		for m in party.members:
+			if m.display_name != d.name:
+				continue
+			m.equipment = {"weapon": String(d.equipment.get("weapon", "")), "armor": String(d.equipment.get("armor", ""))}
+			m.recompute_stats()
+			m._attach_weapon()
+			m.hp = float(d.hp)
+			m.stamina = float(d.stamina)
+			m.downed = bool(d.downed)
+			m.orders.clear()
+			m.current = null
+			m.place_at(Vector2i(int(d.cell[0]), int(d.cell[1])))
+			if m.downed:
+				m.body.play("die", true)
+	pathfinder.ensure_covers(party.members[0].cell)
+	terrain.focus_cell = party.members[0].cell
+	if cam:
+		cam.position = party.members[0].position
+
+func save_game() -> bool:
+	if in_combat:
+		log_msg("You can't save with enemies nearby.")
+		return false
+	var ok := GameState.write_save(GameState.to_dict(party_state()))
+	log_msg("Game saved (day %d, %s)." % [TimeOfDay.day, TimeOfDay.clock_text()] if ok else "Saving failed.")
+	return ok
+
+func load_game() -> void:
+	var data := GameState.read_save()
+	if data.is_empty():
+		log_msg("No saved game yet (F5 saves).")
+		return
+	GameState.pending_load = data
+	TacticalPause.set_paused(false)
+	get_tree().change_scene_to_file("res://main.tscn")
+
+func apply_graphics() -> void:
+	Settings.apply_graphics(env.environment, sun, get_viewport())
+
 # ---------------------------------------------------------------- loop
 
 func _process(delta: float) -> void:
@@ -175,6 +387,11 @@ func _process(delta: float) -> void:
 	if TacticalPause.paused:
 		return
 	_update_combat_state(delta)
+	Audio.set_music("combat" if in_combat else ("day" if TimeOfDay.daylight() > 0.35 else "night"))
+	_quest_timer -= delta
+	if _quest_timer <= 0.0:
+		_quest_timer = 0.5
+		QuestLog.notify_positions(party.members.filter(func(m): return m.alive()).map(func(m): return m.cell))
 
 func _update_combat_state(delta: float) -> void:
 	var fighting := false
@@ -244,3 +461,11 @@ func _update_sun() -> void:
 	env.environment.fog_light_color = sky
 	env.environment.ambient_light_color = Color(0.55, 0.55, 0.6).lerp(Color(0.12, 0.14, 0.22), 1.0 - day)
 	env.environment.ambient_light_energy = lerpf(0.3, 0.45, day)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_I: panels.toggle_pack()
+			KEY_J: panels.open_quests()
+			KEY_F5: save_game()
+			KEY_F9: load_game()

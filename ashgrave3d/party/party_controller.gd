@@ -1,7 +1,8 @@
 class_name PartyController
 extends Control
 ## Mouse and keys for the party (a full-screen overlay so it can draw the drag box):
-##  left-click / drag: select   right-click: move in formation, or attack the enemy under the cursor
+##  left-click / drag: select   right-click: move in formation, attack the enemy under the cursor,
+##  or send the leader to talk to a villager / gather from a node
 ##  shift: queue   Q / E / R: the first selected member's abilities   1-4 / Tab: pick members.
 
 const FORMATION: Array[Vector2i] = [Vector2i(0, 0), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1), Vector2i(1, 1), Vector2i(-2, 0)]
@@ -22,7 +23,7 @@ var targeting := {}
 var _hovered: Actor = null
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func leader() -> PartyMember:
@@ -60,6 +61,43 @@ func actor_at(p: Vector2, want_hostile: bool) -> Actor:
 			best = a
 	return best
 
+## A villager (neutral actor) near a screen point.
+func villager_at(p: Vector2) -> Actor:
+	var best: Actor = null
+	var best_d := PICK_RADIUS
+	for a in (Actor.ctx.actors if Actor.ctx else []):
+		if not is_instance_valid(a) or a.downed or a.faction != "neutral":
+			continue
+		if cam.camera.is_position_behind(a.global_position):
+			continue
+		var d := screen_pos(a).distance_to(p)
+		if d < best_d:
+			best_d = d
+			best = a
+	return best
+
+## A gather node near a screen point.
+func interactable_at(p: Vector2) -> Node3D:
+	var best: Node3D = null
+	var best_d := PICK_RADIUS * 0.8
+	for n in (Actor.ctx.interactables if Actor.ctx else []):
+		if not is_instance_valid(n) or cam.camera.is_position_behind(n.global_position):
+			continue
+		var d := cam.camera.unproject_position(n.global_position + Vector3(0, 0.3, 0)).distance_to(p)
+		if d < best_d:
+			best_d = d
+			best = n
+	return best
+
+## The lead selected member walks over and interacts (talk, gather).
+func order_interact(node: Node, at: Vector2i, reach: float, queue := false) -> void:
+	var m := leader()
+	if m.downed:
+		return
+	m.issue({"type": "interact", "node": node, "cell": at, "range": reach}, queue)
+	marker = world.cell_to_world(at)
+	_marker_t = 0.0
+
 func member_at(p: Vector2) -> PartyMember:
 	var best: PartyMember = null
 	var best_d := PICK_RADIUS
@@ -93,8 +131,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				_resolve_targeting(event.position, event.shift_pressed)
 			else:
 				var foe := actor_at(event.position, true)
+				var folk := villager_at(event.position) if foe == null else null
+				var node := interactable_at(event.position) if foe == null and folk == null else null
 				if foe:
 					order_attack(foe, event.shift_pressed)
+				elif folk:
+					order_interact(folk, folk.cell, 2.0, event.shift_pressed)
+				elif node:
+					order_interact(node, node.cell, 1.5, event.shift_pressed)
 				else:
 					var gp = cam.ground_point(event.position)
 					if gp != null:
@@ -213,7 +257,10 @@ func free_near(c: Vector2i, taken: Dictionary) -> Vector2i:
 
 func _process(delta: float) -> void:
 	_marker_t += delta
-	var foe := actor_at(get_viewport().get_mouse_position(), true) if Actor.ctx else null
+	var mp := get_viewport().get_mouse_position()
+	var foe := actor_at(mp, true) if Actor.ctx else null
+	if foe == null and Actor.ctx:
+		foe = villager_at(mp)
 	if foe != _hovered:
 		if is_instance_valid(_hovered):
 			_hovered.hovered = false

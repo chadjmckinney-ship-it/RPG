@@ -61,7 +61,12 @@ func setup_stats(d: Dictionary) -> void:
 	hp = max_hp
 	stamina = max_stamina
 
+var body_tint := Color.WHITE
+var body_size := 1.0
+
 func set_body(model_id: String, tint := Color.WHITE, size := 1.0) -> void:
+	body_tint = tint
+	body_size = size
 	if body:
 		body.queue_free()
 	body = CharacterModel.new()
