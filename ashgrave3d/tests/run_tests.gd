@@ -2,7 +2,7 @@ extends SceneTree
 ## Minimal headless test runner:  godot --headless -s res://tests/run_tests.gd
 ## Runs every test_* method in the suites below; exits 1 on any failure.
 
-const SUITES := ["res://tests/test_foundation.gd"]
+const SUITES := ["res://tests/test_foundation.gd", "res://tests/test_combat.gd"]
 
 var failures := 0
 var passes := 0

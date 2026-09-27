@@ -264,9 +264,7 @@ func _box(size: Vector3) -> Mesh:
 func _prism() -> Mesh:
 	var m := PrismMesh.new()
 	m.size = Vector3(1, 1, 1)
-	var st := SurfaceTool.new()
-	st.create_from(m, 0)
-	var arr := st.commit_to_arrays()
+	var arr := m.get_mesh_arrays()
 	# PrismMesh points along +Y with its ridge on X already; shift so the base is at y 0.
 	var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
 	for i in v.size():
@@ -281,9 +279,8 @@ func _combine(parts: Array) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for p in parts:
-		var src := SurfaceTool.new()
-		src.create_from(p[0], 0)
-		var arr := src.commit_to_arrays()
+		# PrimitiveMesh arrays come straight from the generator (no rendering server round trip)
+		var arr: Array = p[0].get_mesh_arrays() if p[0] is PrimitiveMesh else p[0].surface_get_arrays(0)
 		var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
 		var nrm: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
 		var idx: PackedInt32Array = arr[Mesh.ARRAY_INDEX]

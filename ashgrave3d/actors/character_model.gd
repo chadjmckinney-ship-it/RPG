@@ -35,7 +35,11 @@ var _attack_n := 0
 var _procedural := ""       # fallback motion in progress: lunge, flinch, fall
 var _body: Node3D           # rotates for procedural motion
 var _pose_pending := false
-var _held := false          # a held pose (paused player) standing in for a missing clip
+var _held := false
+var _meshes: Array[MeshInstance3D] = []
+var _flash_t := 0.0
+var _highlight := Color(0, 0, 0, 0)
+static var _overlay_cache := {}          # a held pose (paused player) standing in for a missing clip
 
 func setup(char_id: String, tint := Color.WHITE, size := 1.0) -> void:
 	id = char_id
@@ -53,9 +57,12 @@ func setup(char_id: String, tint := Color.WHITE, size := 1.0) -> void:
 		model = Mannequin.build(tint)
 		yaw_offset = 0.0
 	walk_speed = float(cfg.get("walk_speed", walk_speed))
+	hand_bone = String(cfg.get("hand", hand_bone))
 	model.scale = Vector3.ONE * float(cfg.get("scale", 1.0)) * size
 	model.rotation.y = yaw_offset
 	_body.add_child(model)
+	for mi in model.find_children("*", "MeshInstance3D", true, false):
+		_meshes.append(mi)
 	ap = model.find_child("AnimationPlayer", true, false)
 	if ap:
 		_donate_clips(dir, char_id)
@@ -101,6 +108,54 @@ func _map_clips(named: Dictionary) -> void:
 		var a := ap.get_animation(n)
 		if clips.get("walk", []).has(n) or clips.get("run", []).has(n) or clips.get("idle", []).has(n) or clips.get("ready", []).has(n):
 			a.loop_mode = Animation.LOOP_LINEAR
+
+var _weapon: Node3D
+
+## Put equipment/<id>.glb in the right hand (hand.R bone); removes the old one. Silent if the
+## model has no skeleton or the weapon has no model yet.
+func attach_weapon(item_id: String) -> void:
+	if _weapon:
+		_weapon.queue_free()
+		_weapon = null
+	var path := "res://equipment/%s.glb" % item_id
+	if item_id == "" or not ResourceLoader.exists(path):
+		return
+	var sk: Skeleton3D = model.find_child("Skeleton3D", true, false) if model else null
+	if sk == null or sk.find_bone(hand_bone) < 0:
+		return
+	var att := BoneAttachment3D.new()
+	sk.add_child(att)
+	att.bone_name = hand_bone
+	att.add_child((load(path) as PackedScene).instantiate())
+	_weapon = att
+
+var hand_bone := "hand.R"
+
+## White pulse when hit.
+func flash() -> void:
+	_flash_t = 0.12
+	_apply_overlay()
+
+## Soft coloured tint (e.g. red for the enemy under the cursor); transparent clears it.
+func highlight(c: Color) -> void:
+	if c != _highlight:
+		_highlight = c
+		_apply_overlay()
+
+func _apply_overlay() -> void:
+	var c := Color(1, 1, 1, 0.55) if _flash_t > 0.0 else _highlight
+	var mat: Material = null
+	if c.a > 0.0:
+		if not _overlay_cache.has(c):
+			var m := StandardMaterial3D.new()
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			m.albedo_color = c
+			m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+			_overlay_cache[c] = m
+		mat = _overlay_cache[c]
+	for mi in _meshes:
+		mi.material_overlay = mat
 
 func has_clip(logical: String) -> bool:
 	return not clips.get(logical, []).is_empty()
@@ -172,6 +227,10 @@ func _process(delta: float) -> void:
 	if ap and not _held and not ap.is_playing() and ap.assigned_animation != "" and anim not in ["die"]:
 		ap.play()
 	_t += delta
+	if _flash_t > 0.0:
+		_flash_t -= delta
+		if _flash_t <= 0.0:
+			_apply_overlay()
 	if _pose_pending and ap:
 		ap.seek(0.0, true)
 		ap.pause()
