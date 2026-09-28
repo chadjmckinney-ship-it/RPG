@@ -151,3 +151,45 @@ func test_loading_a_save_into_a_new_scene() -> void:
 	check(fresh.party.members[0].cell == target, "leader not placed where saved: %s vs %s" % [fresh.party.members[0].cell, target])
 	check(GameState.xp == 300 and GameState.pending_load.is_empty(), "save not applied")
 	await _teardown(fresh)
+
+func test_village_folk_keep_apart() -> void:
+	var main: Node = await _boot()
+	var v := _load_start_village(main)
+	var folk: Array = main.actors.filter(func(a): return is_instance_valid(a) and a is Villager and a.village.get("id") == v.id)
+	check(folk.size() >= 4, "too few villagers to test spacing")
+	# evening too: everyone heads for the tavern, the likeliest place to pile up
+	for hour_time in [0.45, 0.8]:
+		TimeOfDay.time = hour_time
+		for f in folk:
+			f._think = 0.0
+			f._idle(0.1)
+		for i in folk.size():
+			for j in range(i + 1, folk.size()):
+				var a: Vector2i = folk[i].spot
+				var b: Vector2i = folk[j].spot
+				check(maxi(absi(a.x - b.x), absi(a.y - b.y)) >= Villager.SPACING,
+					"%s and %s both stand near %s at time %.2f" % [folk[i].display_name, folk[j].display_name, a, hour_time])
+	await _teardown(main)
+
+func test_talked_to_folk_face_the_speaker() -> void:
+	var main: Node = await _boot()
+	_load_start_village(main)
+	var maud := _find_npc(main, "maud")
+	var lead: PartyMember = main.party.leader()
+	lead.place_at(main.party.free_near(maud.cell + Vector2i(2, -1), {}))
+	maud.issue({"type": "move", "cell": maud.cell + Vector2i(3, 3)})
+	maud.on_interact(lead)
+	var d: Vector3 = lead.global_position - maud.global_position
+	var want := atan2(-d.x, -d.z)
+	check(absf(angle_difference(maud.body.rotation.y, want)) < 0.05, "Maud didn't turn to the speaker")
+	check(maud.current == null and maud.orders.is_empty(), "Maud kept walking while spoken to")
+	main.panels.close_all()
+	for i in 20:
+		maud._update_body()
+	check(absf(angle_difference(maud.body.rotation.y, want)) < 0.05, "Maud turned away while the speaker is still there")
+	lead.place_at(main.party.free_near(maud.cell + Vector2i(9, 0), {}))
+	for i in 30:
+		maud._update_body()
+	var rest := atan2(-Actor.REST_FACING.x, -Actor.REST_FACING.z)
+	check(absf(angle_difference(maud.body.rotation.y, rest)) < 0.05, "Maud should face the camera again once the speaker leaves")
+	await _teardown(main)

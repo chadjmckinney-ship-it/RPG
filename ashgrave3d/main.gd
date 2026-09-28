@@ -244,7 +244,7 @@ func _spawn_props(ch: Vector2i) -> void:
 	chunk_props[ch] = list
 
 func _place_villager(vil: Villager) -> Villager:
-	vil.place_at(party.free_near(vil.schedule_target(TimeOfDay.hour()), {}))
+	vil.place_at(vil.claim_spot(vil.schedule_target(TimeOfDay.hour())))
 	actors.append(vil)
 	vil.tree_exiting.connect(func(): actors.erase(vil))
 	return vil

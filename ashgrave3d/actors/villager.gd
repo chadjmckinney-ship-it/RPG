@@ -27,6 +27,12 @@ var work_cell := Vector2i.ZERO
 var tavern_cell := Vector2i.ZERO
 var home_cell := Vector2i.ZERO
 var _think := 0.0
+## Where this villager is standing or heading, and the schedule target it was picked for.
+var spot := Vector2i(-1, -1)
+var _spot_for := Vector2i(-1, -1)
+
+## Cells kept between villagers' spots, so they never stack and each one can be clicked.
+const SPACING := 2
 
 func _init() -> void:
 	faction = "neutral"
@@ -95,16 +101,44 @@ func schedule_target(hour: int) -> Vector2i:
 	return home_cell
 
 func _idle(delta: float) -> void:
+	if is_attending():
+		return
 	_think -= delta
 	if _think > 0.0:
 		return
 	_think = randf_range(1.0, 2.5)
 	var want := schedule_target(TimeOfDay.hour())
-	if cell_distance(want) > 1.5:
-		var dest := want
-		if not world.walkable(dest):
-			dest = want + Vector2i(0, 1)
-		issue({"type": "move", "cell": dest})
+	if want != _spot_for:
+		claim_spot(want)
+	if cell != spot:
+		issue({"type": "move", "cell": spot})
+
+## Pick (and remember) where to stand for a schedule target: the nearest open cell that keeps
+## SPACING from every other villager's spot and cell.
+func claim_spot(want: Vector2i) -> Vector2i:
+	_spot_for = want
+	spot = want
+	for r in 8:
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var c := want + Vector2i(dx, dy)
+				if world.walkable(c) and not world.has_tree(c) and not _crowded(c):
+					spot = c
+					return spot
+	return spot
+
+func _crowded(c: Vector2i) -> bool:
+	if Actor.ctx == null or not is_instance_valid(Actor.ctx):
+		return false
+	for a in Actor.ctx.actors:
+		if a == self or not is_instance_valid(a) or not (a is Villager):
+			continue
+		for o in [a.cell, a.spot]:
+			if maxi(absi(o.x - c.x), absi(o.y - c.y)) < SPACING:
+				return true
+	return false
 
 func _name_for(v: Dictionary, index: int) -> String:
 	var pool: Array = SMITH_NAMES if job == "smith" else VILLAGER_NAMES
@@ -117,5 +151,6 @@ func _process(delta: float) -> void:
 	if body:
 		body.highlight(Color(1.0, 0.8, 0.4, 0.18) if hovered else Color(0, 0, 0, 0))
 
-func on_interact(_who) -> void:
+func on_interact(who) -> void:
+	attend(who)
 	Events.talk_requested.emit(self)

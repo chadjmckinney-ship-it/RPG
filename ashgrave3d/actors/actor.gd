@@ -52,6 +52,13 @@ const RUN_SPEED := 140.0
 ## Which way anyone outside the party turns while standing about out of combat: toward the
 ## camera's default spot (RtsCamera yaw 45 puts it south-east, +X +Z), so their faces show.
 const REST_FACING := Vector3(1, 0, 1)
+## How long someone keeps facing whoever spoke to them, and how close the speaker must stay (cells).
+const ATTENTION_TIME := 8.0
+const ATTENTION_RANGE := 4.0
+
+## Whoever is talking to this actor (see attend()); they face them instead of REST_FACING.
+var attention: Node3D = null
+var _attention_t := 0.0
 
 var _ring: MeshInstance3D
 var _swing_cd := 0.0
@@ -154,6 +161,7 @@ func _process(delta: float) -> void:
 		return
 	stamina = minf(max_stamina, stamina + 8.0 * delta)
 	_combat_t -= delta
+	_attention_t -= delta
 	_swing_cd -= delta
 	for k in ability_cd:
 		ability_cd[k] = maxf(0.0, ability_cd[k] - delta)
@@ -298,7 +306,24 @@ func _update_body() -> void:
 	else:
 		body.play("ready" if in_combat() else "idle")
 		if faction != "party" and not in_combat():
-			body.face(REST_FACING)
+			body.face(attention.global_position - global_position if is_attending() else REST_FACING)
+
+## Stop and turn to someone who is talking to us; the turn is instant, since dialogue pauses the game.
+func attend(who: Node3D) -> void:
+	attention = who
+	_attention_t = ATTENTION_TIME
+	orders.clear()
+	current = null
+	path.clear()
+	if body:
+		var d := who.global_position - global_position
+		if Vector2(d.x, d.z).length_squared() > 0.0001:
+			body.rotation.y = atan2(-d.x, -d.z)
+
+func is_attending() -> bool:
+	if _attention_t <= 0.0 or attention == null or not is_instance_valid(attention):
+		return false
+	return world.world_to_cell(attention.global_position).distance_to(cell) <= ATTENTION_RANGE
 
 # ---------------------------------------------------------------- combat
 
