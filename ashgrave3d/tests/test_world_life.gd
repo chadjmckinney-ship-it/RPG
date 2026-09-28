@@ -277,3 +277,26 @@ func test_idle_npcs_face_the_current_camera() -> void:
 	main._process(0.016)
 	check(Actor.rest_facing.is_equal_approx(Actor.REST_FACING.normalized()), "default camera should give REST_FACING")
 	await _teardown(main)
+
+func test_idle_folk_turn_while_paused() -> void:
+	var main: Node = await _boot()
+	_load_start_village(main)
+	var maud := _find_npc(main, "maud")
+	maud.path.clear()
+	maud.current = null
+	maud.orders.clear()
+	TacticalPause.set_paused(true)
+	main.cam.yaw = 200.0
+	main.cam._place()
+	main._process(0.016)
+	var at: Vector3 = maud.position
+	for i in 30:
+		maud._process(0.016)
+	var f: Vector3 = main.cam.facing()
+	check(absf(angle_difference(maud.body.rotation.y, atan2(-f.x, -f.z))) < 0.05, "Maud didn't turn to the camera while paused")
+	check(maud.position == at, "Maud moved while paused")
+	TacticalPause.set_paused(false)
+	main.cam.yaw = 45.0
+	main.cam._place()
+	main._process(0.016)
+	await _teardown(main)

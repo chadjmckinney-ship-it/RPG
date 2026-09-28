@@ -158,6 +158,7 @@ func order_target_cell(o: Dictionary) -> Vector2i:
 
 func _process(delta: float) -> void:
 	if TacticalPause.paused:
+		_rest_turn()   # only this: idle folk still turn as the camera rotates
 		return
 	for f in floaters:
 		f.t += delta
@@ -381,8 +382,16 @@ func _update_body() -> void:
 		body.play("run" if speed * (statuses.slow.mult if statuses.has("slow") else 1.0) >= RUN_SPEED else "walk")
 	else:
 		body.play("ready" if in_combat() else "idle")
-		if faction != "party" and not in_combat():
-			body.face(attention.global_position - global_position if is_attending() else rest_facing)
+		_rest_turn()
+
+## Anyone outside the party standing about out of combat turns to whoever is talking to them,
+## or toward the camera (rest_facing). Also runs while paused.
+func _rest_turn() -> void:
+	if body == null or faction == "party" or downed or in_combat() or body.anim in CharacterModel.ONE_SHOT:
+		return
+	if not path.is_empty() and not statuses.has("root"):
+		return
+	body.face(attention.global_position - global_position if is_attending() else rest_facing)
 
 ## Stop and turn to someone who is talking to us; the turn is instant, since dialogue pauses the game.
 func attend(who: Node3D) -> void:
