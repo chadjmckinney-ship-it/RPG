@@ -310,9 +310,11 @@ func _follow_path(delta: float) -> void:
 		position += to.normalized() * step
 		position.y = world.ground_y(position)
 
-## Party members and villagers keep out of each other's way; fights (anything hostile) don't.
+## Everyone steps around their own side: party members and villagers around each other, creatures
+## around creatures. Across a fight (hostile against the rest) nobody gives way, so melee reach
+## is unchanged.
 func _avoids(other: Actor) -> bool:
-	return faction != "hostile" and other.faction != "hostile" and not other.downed
+	return (faction == "hostile") == (other.faction == "hostile") and not other.downed
 
 ## Someone we avoid stands on c, or is stepping into it.
 func _occupied(c: Vector2i) -> bool:
@@ -320,7 +322,7 @@ func _occupied(c: Vector2i) -> bool:
 
 func _people_cells() -> Array:
 	var out: Array = []
-	if faction == "hostile" or ctx == null or not is_instance_valid(ctx):
+	if ctx == null or not is_instance_valid(ctx):
 		return out
 	for a in ctx.actors:
 		if a == self or not is_instance_valid(a) or not _avoids(a):

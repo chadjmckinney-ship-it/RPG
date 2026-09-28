@@ -122,3 +122,37 @@ func test_creatures_face_the_party_when_they_spot_it() -> void:
 	check(absf(angle_difference(foe.body.rotation.y, want)) < 0.05, "the bandit turned away while paused")
 	TacticalPause.set_paused(false)
 	await _done(main)
+
+func test_creatures_walk_around_each_other() -> void:
+	var main: Node = await _boot(["maren"])
+	var maren: PartyMember = main.party.members[0]
+	# an open row, well away from Maren so nobody aggroes
+	var row := maren.cell
+	for r in range(12, 140):
+		var c0 := maren.cell + Vector2i(r, r / 2)
+		var ok := true
+		for dx in range(-1, 8):
+			for dy in range(-2, 3):
+				if not main.world.walkable(c0 + Vector2i(dx, dy)) or main.world.has_tree(c0 + Vector2i(dx, dy)):
+					ok = false
+		if ok:
+			row = c0
+			break
+	main.pathfinder.ensure_covers(row)
+	var blocker: Creature = main.spawn_creature("risen", row + Vector2i(3, 0))
+	var walker: Creature = main.spawn_creature("risen", row)
+	blocker.set_process(false)
+	walker.set_process(false)
+	walker.order_move(main.pathfinder.find_path(row, row + Vector2i(6, 0)))
+	var stepped_on := false
+	for i in 400:
+		walker._process(0.05)
+		if walker.cell == blocker.cell:
+			stepped_on = true
+		if walker.path.is_empty():
+			break
+	check(not stepped_on, "one risen walked through the other")
+	check(walker.cell == row + Vector2i(6, 0), "the risen didn't reach the far end (at %s)" % walker.cell)
+	# creatures still close to melee range of the party: nobody steps around a foe
+	check(not walker._avoids(maren) and not maren._avoids(walker), "creatures and the party shouldn't give way to each other")
+	await _done(main)
