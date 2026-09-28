@@ -216,3 +216,45 @@ func test_party_keeps_off_villagers() -> void:
 	var got := maud.claim_spot(want)
 	check(got != oswin.cell, "Maud picked the cell Oswin stands on")
 	await _teardown(main)
+
+## An open row of cells near c: 7 in a line along +x, all walkable and treeless, with a free row on each side.
+func _open_row(main: Node, c: Vector2i) -> Vector2i:
+	for r in range(0, 120):
+		var c0 := c + Vector2i(r, r / 2)
+		var ok := true
+		for dx in range(-1, 8):
+			for dy in range(-2, 3):
+				var n := c0 + Vector2i(dx, dy)
+				if not main.world.walkable(n) or main.world.has_tree(n):
+					ok = false
+		if ok:
+			return c0
+	return c
+
+func test_people_walk_around_each_other() -> void:
+	var main: Node = await _boot(["maren", "oswin"])
+	var maren: PartyMember = main.party.members[0]
+	var oswin: PartyMember = main.party.members[1]
+	var row := _open_row(main, maren.cell)
+	main.pathfinder.ensure_covers(row)
+	oswin.place_at(row + Vector2i(3, 0))          # standing in the middle of the way
+	maren.place_at(row)
+	maren.order_move(main.pathfinder.find_path(row, row + Vector2i(6, 0)))
+	var stepped_on := false
+	for i in 400:
+		maren._process(0.05)
+		if maren.cell == oswin.cell:
+			stepped_on = true
+		if maren.path.is_empty():
+			break
+	check(not stepped_on, "Maren walked through Oswin")
+	check(maren.cell == row + Vector2i(6, 0), "Maren didn't reach the far end (at %s)" % maren.cell)
+	# a goal someone is standing on: stop next to them instead
+	maren.place_at(row)
+	maren.order_move(main.pathfinder.find_path(row, oswin.cell))
+	for i in 400:
+		maren._process(0.05)
+		if maren.path.is_empty():
+			break
+	check(maren.cell != oswin.cell and maren.cell_distance(oswin.cell) < 2.0, "Maren should stop beside Oswin, not on him (at %s)" % maren.cell)
+	await _teardown(main)

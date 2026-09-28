@@ -129,6 +129,11 @@ func claim_spot(want: Vector2i) -> Vector2i:
 					return spot
 	return spot
 
+func _goal_moved(c: Vector2i) -> void:
+	if current != null and current.type == "move":
+		spot = c
+		current.cell = c
+
 func _crowded(c: Vector2i) -> bool:
 	if Actor.ctx == null or not is_instance_valid(Actor.ctx):
 		return false

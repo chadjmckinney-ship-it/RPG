@@ -39,3 +39,20 @@ func find_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 	if not grid.region.has_point(from) or not grid.region.has_point(to) or grid.is_point_solid(to):
 		return []
 	return grid.get_id_path(from, to)
+
+## Like find_path, but treats the given cells as solid for this one search (people standing
+## in the way). Returns [] if the goal itself is one of them.
+func find_path_avoiding(from: Vector2i, to: Vector2i, blocked: Array) -> Array[Vector2i]:
+	if blocked.has(to):
+		return []
+	if grid.region.size == Vector2i.ZERO:
+		ensure_covers(from)
+	var marked: Array[Vector2i] = []
+	for c in blocked:
+		if c != from and grid.region.has_point(c) and not grid.is_point_solid(c):
+			grid.set_point_solid(c, true)
+			marked.append(c)
+	var p := find_path(from, to)
+	for c in marked:
+		grid.set_point_solid(c, false)
+	return p

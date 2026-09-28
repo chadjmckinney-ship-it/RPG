@@ -59,6 +59,12 @@ const ATTENTION_RANGE := 4.0
 ## Whoever is talking to this actor (see attend()); they face them instead of REST_FACING.
 var attention: Node3D = null
 var _attention_t := 0.0
+var _blocked_t := 0.0
+
+## How long a walker waits for someone in its way before squeezing past (seconds), and how far
+## around itself it looks for people to step around (cells).
+const WAIT_LIMIT := 1.5
+const AVOID_RADIUS := 6.0
 
 var _ring: MeshInstance3D
 var _swing_cd := 0.0
@@ -276,6 +282,17 @@ func move_speed() -> float:
 func _follow_path(delta: float) -> void:
 	if path.is_empty() or statuses.has("root"):
 		return
+	# about to leave a cell centre: step around party members and villagers in the way
+	var here := world.cell_to_world(cell)
+	if Vector2(position.x - here.x, position.z - here.z).length_squared() < 0.0004 and _occupied(path[0]):
+		if not _step_around():
+			_blocked_t += delta
+			if _blocked_t < WAIT_LIMIT:
+				_face(world.cell_to_world(path[0]))
+				return
+		if path.is_empty():
+			return
+	_blocked_t = 0.0
 	var target := world.cell_to_world(path[0])
 	var to := target - position
 	to.y = 0.0
@@ -288,6 +305,62 @@ func _follow_path(delta: float) -> void:
 	else:
 		position += to.normalized() * step
 		position.y = world.ground_y(position)
+
+## Party members and villagers keep out of each other's way; fights (anything hostile) don't.
+func _avoids(other: Actor) -> bool:
+	return faction != "hostile" and other.faction != "hostile" and not other.downed
+
+## Someone we avoid stands on c, or is stepping into it.
+func _occupied(c: Vector2i) -> bool:
+	return _people_cells().has(c)
+
+func _people_cells() -> Array:
+	var out: Array = []
+	if faction == "hostile" or ctx == null or not is_instance_valid(ctx):
+		return out
+	for a in ctx.actors:
+		if a == self or not is_instance_valid(a) or not _avoids(a):
+			continue
+		var c: Vector2i = a.cell if a.path.is_empty() else a.path[0]
+		if Vector2(c - cell).length() <= AVOID_RADIUS:
+			out.append(c)
+	return out
+
+## Re-plan around the people in the way. If the goal itself is taken, head for the nearest free
+## cell instead. False when there's no way through right now (the caller waits).
+func _step_around() -> bool:
+	if ctx == null or not is_instance_valid(ctx) or ctx.pathfinder == null:
+		return false
+	var blocked := _people_cells()
+	var goal: Vector2i = path[path.size() - 1]
+	if blocked.has(goal):
+		goal = _free_cell_near(goal, blocked)
+		if goal == cell:
+			path.clear()
+			return true
+		_goal_moved(goal)
+	var p: Array[Vector2i] = ctx.pathfinder.find_path_avoiding(cell, goal, blocked)
+	if not p.is_empty() and p[0] == cell:
+		p.remove_at(0)
+	if p.is_empty():
+		return false
+	path = p
+	return true
+
+func _free_cell_near(c: Vector2i, blocked: Array) -> Vector2i:
+	for r in range(1, 4):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var n := c + Vector2i(dx, dy)
+				if n == cell or (world.walkable(n) and not world.has_tree(n) and not blocked.has(n)):
+					return n
+	return cell
+
+## Override: the goal was taken and replaced by a nearby cell (villagers remember it as their spot).
+func _goal_moved(_c: Vector2i) -> void:
+	pass
 
 func _face(p: Vector3) -> void:
 	if body:
