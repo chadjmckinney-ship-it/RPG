@@ -384,12 +384,17 @@ func _update_body() -> void:
 		body.play("ready" if in_combat() else "idle")
 		_rest_turn()
 
-## Anyone outside the party standing about out of combat turns to whoever is talking to them,
-## or toward the camera (rest_facing). Also runs while paused.
+## Anyone outside the party turns to face their foe once they've picked one; standing about out
+## of combat, they turn to whoever is talking to them, or toward the camera (rest_facing).
+## Also runs while paused.
 func _rest_turn() -> void:
-	if body == null or faction == "party" or downed or in_combat() or body.anim in CharacterModel.ONE_SHOT:
+	if body == null or faction == "party" or downed or body.anim in CharacterModel.ONE_SHOT:
 		return
-	if not path.is_empty() and not statuses.has("root"):
+	var foe = current.get("target") if current != null and current.type == "attack" else null
+	if foe != null and is_instance_valid(foe):
+		body.face(foe.global_position - global_position)
+		return
+	if in_combat() or (not path.is_empty() and not statuses.has("root")):
 		return
 	body.face(attention.global_position - global_position if is_attending() else rest_facing)
 
@@ -400,8 +405,12 @@ func attend(who: Node3D) -> void:
 	orders.clear()
 	current = null
 	path.clear()
+	snap_face(who.global_position)
+
+## Turn the body to face a point at once (no easing), e.g. when the game is about to pause.
+func snap_face(p: Vector3) -> void:
 	if body:
-		var d := who.global_position - global_position
+		var d := p - global_position
 		if Vector2(d.x, d.z).length_squared() > 0.0001:
 			body.rotation.y = atan2(-d.x, -d.z)
 

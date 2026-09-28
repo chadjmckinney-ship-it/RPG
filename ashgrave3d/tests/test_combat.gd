@@ -105,3 +105,20 @@ func test_camps_spawn_with_ranks() -> void:
 	for c in creatures:
 		check(c.rank == Encounters.rank_at(main.world, c.home) or absi(c.rank - Encounters.rank_at(main.world, c.home)) <= 1, "camp rank off")
 	await _done(main)
+
+func test_creatures_face_the_party_when_they_spot_it() -> void:
+	var main: Node = await _boot(["maren"])
+	var maren: PartyMember = main.party.members[0]
+	var foe: Creature = main.spawn_creature("bandit", main.party.free_near(maren.cell + Vector2i(4, 2), {}))
+	foe.snap_face(foe.global_position + Actor.rest_facing)       # looking at the camera, as when idle
+	TacticalPause.settings.on_enemy_spotted = true
+	foe._process(0.016)                                          # spots Maren; the game auto-pauses
+	var d: Vector3 = maren.global_position - foe.global_position
+	var want := atan2(-d.x, -d.z)
+	check(TacticalPause.paused, "spotting should auto-pause")
+	check(absf(angle_difference(foe.body.rotation.y, want)) < 0.05, "the bandit didn't turn to Maren when it spotted her")
+	for i in 20:
+		foe._process(0.016)                                      # paused: must not turn back to the camera
+	check(absf(angle_difference(foe.body.rotation.y, want)) < 0.05, "the bandit turned away while paused")
+	TacticalPause.set_paused(false)
+	await _done(main)

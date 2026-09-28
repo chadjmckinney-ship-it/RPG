@@ -9,6 +9,8 @@ const RANK_NAMES := ["", "Hardened ", "Dread ", "Elder "]
 const HP_PER_RANK := 0.35
 const ATK_PER_RANK := 0.2
 const DEF_PER_RANK := 1.5
+## On spotting the party, a creature stands and faces them this long (seconds) before it charges.
+const NOTICE_TIME := 0.4
 
 var type_id := "hound"
 var home := Vector2i.ZERO
@@ -21,6 +23,7 @@ var returning := false
 var fled := false
 var _wander_t := 0.0
 var _spotted := false
+var _notice_t := 0.0
 
 func _init() -> void:
 	faction = "hostile"
@@ -83,6 +86,8 @@ func _idle(delta: float) -> void:
 	if tgt:
 		if not _spotted:
 			_spotted = true
+			snap_face(tgt.global_position)   # spotting usually auto-pauses: be seen looking at them
+			_notice_t = NOTICE_TIME
 			Events.enemy_spotted.emit(self)
 		issue({"type": "attack", "target": tgt})
 		return
@@ -113,6 +118,12 @@ func _pick_target() -> Actor:
 	return best
 
 func _run_order(delta: float) -> void:
+	if _notice_t > 0.0:
+		_notice_t -= delta
+		var foe = current.get("target") if current != null else null
+		if foe != null and is_instance_valid(foe):
+			_face(foe.global_position)
+		return
 	if current != null and current.type == "attack" and not threat.is_empty():
 		var t := _pick_target()
 		if t and t != current.target:
@@ -130,6 +141,7 @@ func _on_damaged(source: Actor) -> void:
 	if source == null or returning:
 		return
 	threat[source] = threat.get(source, 0.0) + 1.0
+	_notice_t = 0.0   # hit first: no standing about
 	if flee_at > 0.0 and not fled and hp < max_hp * flee_at:
 		fled = true
 		var away := cell + Vector2i(signi(cell.x - source.cell.x) * 6, signi(cell.y - source.cell.y) * 6)
