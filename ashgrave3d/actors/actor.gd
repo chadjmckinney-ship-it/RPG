@@ -52,11 +52,14 @@ const RUN_SPEED := 140.0
 ## Which way anyone outside the party turns while standing about out of combat: toward the
 ## camera's default spot (RtsCamera yaw 45 puts it south-east, +X +Z), so their faces show.
 const REST_FACING := Vector3(1, 0, 1)
+## The direction idle folk actually face: toward the camera as it is now (main.gd updates it
+## from RtsCamera.facing() every frame; REST_FACING until then).
+static var rest_facing := REST_FACING
 ## How long someone keeps facing whoever spoke to them, and how close the speaker must stay (cells).
 const ATTENTION_TIME := 8.0
 const ATTENTION_RANGE := 4.0
 
-## Whoever is talking to this actor (see attend()); they face them instead of REST_FACING.
+## Whoever is talking to this actor (see attend()); they face them instead of rest_facing.
 var attention: Node3D = null
 var _attention_t := 0.0
 var _blocked_t := 0.0
@@ -379,7 +382,7 @@ func _update_body() -> void:
 	else:
 		body.play("ready" if in_combat() else "idle")
 		if faction != "party" and not in_combat():
-			body.face(attention.global_position - global_position if is_attending() else REST_FACING)
+			body.face(attention.global_position - global_position if is_attending() else rest_facing)
 
 ## Stop and turn to someone who is talking to us; the turn is instant, since dialogue pauses the game.
 func attend(who: Node3D) -> void:

@@ -384,6 +384,7 @@ func _process(delta: float) -> void:
 	pathfinder.ensure_covers(lead.cell)
 	_update_sun()
 	_update_prop_fade()
+	Actor.rest_facing = cam.facing()
 	if TacticalPause.paused:
 		return
 	_update_combat_state(delta)

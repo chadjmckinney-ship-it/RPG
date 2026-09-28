@@ -22,6 +22,10 @@ func _ready() -> void:
 	add_child(camera)
 	_place()
 
+## Flat direction from the ground toward the camera (idle folk turn this way to show their faces).
+func facing() -> Vector3:
+	return Basis(Vector3.UP, deg_to_rad(yaw)) * Vector3(0, 0, 1)
+
 func _place() -> void:
 	rotation_degrees = Vector3(0, yaw, 0)
 	var pitch := deg_to_rad(PITCH)

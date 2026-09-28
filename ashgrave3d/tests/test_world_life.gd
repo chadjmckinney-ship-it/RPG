@@ -258,3 +258,22 @@ func test_people_walk_around_each_other() -> void:
 			break
 	check(maren.cell != oswin.cell and maren.cell_distance(oswin.cell) < 2.0, "Maren should stop beside Oswin, not on him (at %s)" % maren.cell)
 	await _teardown(main)
+
+func test_idle_npcs_face_the_current_camera() -> void:
+	var main: Node = await _boot()
+	_load_start_village(main)
+	var maud := _find_npc(main, "maud")
+	main.cam.yaw = 200.0
+	main.cam._place()
+	main._process(0.016)
+	var f: Vector3 = main.cam.facing()
+	maud.path.clear()
+	maud.current = null
+	for i in 30:
+		maud._update_body()
+	check(absf(angle_difference(maud.body.rotation.y, atan2(-f.x, -f.z))) < 0.05, "Maud doesn't face the rotated camera")
+	main.cam.yaw = 45.0
+	main.cam._place()
+	main._process(0.016)
+	check(Actor.rest_facing.is_equal_approx(Actor.REST_FACING.normalized()), "default camera should give REST_FACING")
+	await _teardown(main)
