@@ -246,14 +246,24 @@ func _resolve_targeting(p: Vector2, queue: bool) -> void:
 	if ok:
 		targeting = {}
 
+## The nearest open cell to c: walkable, no tree, not in taken, and not where a villager stands
+## or is heading (so the party never ends a move on top of someone).
 func free_near(c: Vector2i, taken: Dictionary) -> Vector2i:
 	for r in 4:
 		for dx in range(-r, r + 1):
 			for dy in range(-r, r + 1):
 				var n := c + Vector2i(dx, dy)
-				if not taken.has(n) and world.walkable(n) and not world.has_tree(n):
+				if not taken.has(n) and world.walkable(n) and not world.has_tree(n) and not _folk_at(n):
 					return n
 	return c
+
+func _folk_at(c: Vector2i) -> bool:
+	if Actor.ctx == null or not is_instance_valid(Actor.ctx):
+		return false
+	for a in Actor.ctx.actors:
+		if is_instance_valid(a) and a is Villager and (a.cell == c or a.spot == c):
+			return true
+	return false
 
 func _process(delta: float) -> void:
 	_marker_t += delta

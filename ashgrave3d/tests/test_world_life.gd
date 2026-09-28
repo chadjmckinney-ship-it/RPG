@@ -193,3 +193,26 @@ func test_talked_to_folk_face_the_speaker() -> void:
 	var rest := atan2(-Actor.REST_FACING.x, -Actor.REST_FACING.z)
 	check(absf(angle_difference(maud.body.rotation.y, rest)) < 0.05, "Maud should face the camera again once the speaker leaves")
 	await _teardown(main)
+
+func test_party_keeps_off_villagers() -> void:
+	var main: Node = await _boot(["maren", "oswin"])
+	_load_start_village(main)
+	var maud := _find_npc(main, "maud")
+	var party: PartyController = main.party
+	party.select(party.members.duplicate())
+	main.pathfinder.ensure_covers(maud.cell)
+	var dest := party.free_near(maud.cell, {})
+	check(dest != maud.cell and dest != maud.spot, "a move onto Maud ends on her cell")
+	party.order_move_to(maud.cell)
+	for m in party.members:
+		var end: Vector2i = m.path[m.path.size() - 1] if not m.path.is_empty() else m.cell
+		for a in main.actors:
+			if is_instance_valid(a) and a is Villager:
+				check(end != a.cell and end != a.spot, "%s heads for %s's cell" % [m.display_name, a.display_name])
+	# a villager choosing a new spot won't pick a party member's cell
+	var oswin: PartyMember = party.members[1]
+	var want: Vector2i = maud.spot + Vector2i(0, 6)
+	oswin.place_at(want)
+	var got := maud.claim_spot(want)
+	check(got != oswin.cell, "Maud picked the cell Oswin stands on")
+	await _teardown(main)

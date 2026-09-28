@@ -114,7 +114,7 @@ func _idle(delta: float) -> void:
 		issue({"type": "move", "cell": spot})
 
 ## Pick (and remember) where to stand for a schedule target: the nearest open cell that keeps
-## SPACING from every other villager's spot and cell.
+## SPACING from every other villager's spot and cell, and isn't a party member's cell.
 func claim_spot(want: Vector2i) -> Vector2i:
 	_spot_for = want
 	spot = want
@@ -133,7 +133,11 @@ func _crowded(c: Vector2i) -> bool:
 	if Actor.ctx == null or not is_instance_valid(Actor.ctx):
 		return false
 	for a in Actor.ctx.actors:
-		if a == self or not is_instance_valid(a) or not (a is Villager):
+		if a == self or not is_instance_valid(a):
+			continue
+		if a is PartyMember and a.cell == c:
+			return true
+		if not (a is Villager):
 			continue
 		for o in [a.cell, a.spot]:
 			if maxi(absi(o.x - c.x), absi(o.y - c.y)) < SPACING:
